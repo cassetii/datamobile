@@ -1,4 +1,304 @@
-<!DOCTYPE html>
+// Update customer list sesuai struktur data baru
+        function updateCustomerList() {
+            const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
+            const statusFilter = document.getElementById('statusFilter')?.value || '';
+
+            const filteredCustomers = customers.filter(customer => {
+                const matchesSearch = customer.name.toLowerCase().includes(searchTerm) ||
+                                    customer.address.toLowerCase().includes(searchTerm) ||
+                                    customer.phone.includes(searchTerm);
+                
+                // Filter berdasarkan tanggal service (recent = completed, today = in_progress)
+                let customerStatus = 'completed';
+                if (customer.serviceDate) {
+                    const serviceDate = new Date(customer.serviceDate);
+                    const today = new Date();
+                    const diffTime = Math.abs(today - serviceDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays <= 1) customerStatus = 'in_progress';
+                    else if (diffDays <= 7) customerStatus = 'completed';
+                    else customerStatus = 'pending';
+                }
+                
+                const matchesFilter = !statusFilter || customerStatus === statusFilter;
+                
+                return matchesSearch && matchesFilter;
+            });
+
+            const customerListHTML = filteredCustomers.map((customer, index) => {
+                // Determine status
+                let statusClass = 'completed';
+                let statusText = 'Selesai';
+                
+                if (customer.serviceDate) {
+                    const serviceDate = new Date(customer.serviceDate);
+                    const today = new Date();
+                    const diffTime = Math.abs(today - serviceDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays <= 1) {
+                        statusClass = 'in_progress';
+                        statusText = 'Sedang Dikerjakan';
+                    } else if (diffDays <= 7) {
+                        statusClass = 'completed';
+                        statusText = 'Selesai';
+                    } else {
+                        statusClass = 'pending';
+                        statusText = 'Perlu Follow Up';
+                    }
+                }
+
+                return `
+                <div class="customer-card fade-in" style="animation-delay: ${index * 0.1}s;">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="flex-grow-1">
+                            <div class="customer-name">${customer.name}</div>
+                            <div class="customer-info">
+                                <i class="bi bi-geo-alt-fill"></i>
+                                ${customer.address}
+                            </div>
+                            ${customer.phone ? `
+                                <div class="customer-info">
+                                    <i class="bi bi-telephone-fill"></i>
+                                    ${customer.phone}
+                                </div>
+                            ` : ''}
+                        </div>
+                        <span class="status-badge status-${statusClass}">
+                            ${statusText}
+                        </span>
+                    </div>
+
+                    <!-- AC Units -->
+                    <div class="ac-units-container">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-wind me-2" style="color: var(--secondary);"></i>
+                                <span style="font-weight: 600; color: var(--dark);">
+                                    ${customer.acCount || (customer.acUnits ? customer.acUnits.length : 0)} Unit AC
+                                </span>
+                            </div>
+                            <div class="badge" style="background: var(--gradient-orange); color: white;">
+                                ${customer.acBrand || 'Unknown'}
+                            </div>
+                        </div>
+                        ${customer.acUnits ? customer.acUnits.map((unit, index) => `
+                            <div class="ac-unit">
+                                <strong>AC ${index + 1}:</strong> ${unit.brand} ${unit.type} ${unit.pk}<br>
+                                <small class="text-muted">
+                                    Freon: ${unit.freon} • Lokasi: ${unit.location} • Kondisi: ${unit.condition}
+                                </small>
+                            </div>
+                        `).join('') : '<div class="ac-unit">Tidak ada detail AC</div>'}
+                    </div>
+
+                    <!-- Service Info -->
+                    <div class="service-info">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-calendar-check me-2" style="color: var(--success);"></i>
+                            <small>${customer.serviceDate ? formatDate(customer.serviceDate) : 'Belum ada service'}</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-tools me-2" style="color: var(--warning);"></i>
+                            <small>${customer.technician || 'Belum ditentukan'}</small>
+                        </div>
+                    </div>
+
+                    ${customer.notes ? `
+                        <div class="mt-3 p-2 rounded-3" style="background: rgba(74,144,226,0.1);">
+                            <small><strong>Notes:</strong> ${customer.notes}</small>
+                        </div>
+                    ` : ''}
+
+                    <div style="border-top: 1px solid #e9ecef; padding-top: 15px; margin-top: 15px;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span style="color: #6c757d; font-weight: 600;">Payment:</span>
+                            <span class="payment-amount">${formatCurrency(customer.payment || 0)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            }).join('');
+
+            const customerListElement = document.getElementById('customerList');
+            const noResultsElement = document.getElementById('noResults');
+            
+            if (filteredCustomers.length === 0) {
+                if (customerListElement) customerListElement.innerHTML = '';
+                if (noResultsElement) noResultsElement.style.display = 'block';
+            } else {
+                if (customerListElement) customerListElement.innerHTML = customerListHTML;
+                if (noResultsElement) noResultsElement.style.display = 'none';
+            }
+        }
+
+        // Update recent activities sesuai struktur data baru
+        function updateRecentActivities() {
+            // Sort berdasarkan serviceDate terbaru
+            const sortedCustomers = [...customers].sort((a, b) => {
+                const dateA = new Date(a.serviceDate || 0);
+                const dateB = new Date(b.serviceDate || 0);
+                return dateB - dateA;
+            });
+
+            const recentCustomers = sortedCustomers.slice(0, 3);
+            const activitiesHTML = recentCustomers.map((customer, index) => `
+                <div class="d-flex align-items-center p-3 mb-2 rounded-3" 
+                     style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); animation-delay: ${index * 0.1}s;" 
+                     class="fade-in">
+                    <div class="me-3" style="width: 50px; height: 50px; border-radius: 15px; background: var(--gradient-orange); color: white; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-tools"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div style="font-weight: 700; color: var(--dark);">${customer.name}</div>
+                        <small style="color: #6c757d;">
+                            Service • ${customer.serviceDate ? formatDate(customer.serviceDate) : 'Belum ada service'}
+                        </small>
+                        ${customer.notes ? `<br><small style="color: #6c757d; font-style: italic;">${customer.notes}</small>` : ''}
+                    </div>
+                    <div class="text-end">
+                        <div class="payment-amount" style="font-size: 16px;">${formatCurrency(customer.payment || 0)}</div>
+                        <small style="color: #6c757d;">${customer.technician || 'TBD'}</small>
+                    </div>
+                </div>
+            `).join('');
+
+            const recentActivitiesElement = document.getElementById('recentActivities');
+            if (recentActivitiesElement) {
+                recentActivitiesElement.innerHTML = activitiesHTML || '<p class="text-muted text-center">Belum ada aktivitas</p>';
+            }
+        }
+
+        // Utility functions
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Belum ada tanggal';
+            
+            const date = new Date(dateString);
+            const options = { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                timeZone: 'Asia/Jakarta'
+            };
+            return date.toLocaleDateString('id-ID', options);
+        }
+
+        function getStatusText(status) {
+            switch(status) {
+                case 'completed': return 'Selesai';
+                case 'in_progress': return 'Sedang Dikerjakan';
+                case 'pending': return 'Pending';
+                default: return 'Unknown';
+            }
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? 
+                `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : 
+                '0, 0, 0';
+        }
+
+        function hideLoading() {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const app = document.getElementById('app');
+            
+            if (loadingScreen) {
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    if (app) {
+                        app.style.display = 'block';
+                        app.classList.add('fade-in');
+                    }
+                }, 500);
+            }
+        }
+
+        function exportData() {
+            const csvContent = "data:text/csv;charset=utf-8," + 
+                "Name,Address,Phone,AC Count,AC Brand,Service Date,Technician,Payment,Notes\n" +
+                customers.map(customer => 
+                    `"${customer.name}","${customer.address}","${customer.phone || ''}",${customer.acCount || 0},"${customer.acBrand || ''}","${customer.serviceDate || ''}","${customer.technician || ''}",${customer.payment || 0},"${customer.notes || ''}"`
+                ).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "nala_aircon_customers.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function addCustomer() {
+            // Show modal or redirect to add customer page
+            if (confirm('Apakah Anda ingin menambah customer baru?\n\nFitur ini akan segera tersedia!')) {
+                // Placeholder for add customer functionality
+                console.log('Add customer feature coming soon!');
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Search functionality
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', debounce(updateCustomerList, 300));
+            }
+
+            // Filter functionality  
+            const statusFilter = document.getElementById('statusFilter');
+            if (statusFilter) {
+                statusFilter.addEventListener('change', updateCustomerList);
+            }
+
+            // Tab change events
+            const tabLinks = document.querySelectorAll('[data-bs-toggle="pill"]');
+            tabLinks.forEach(link => {
+                link.addEventListener('shown.bs.tab', function() {
+                    // Refresh charts when switching to analytics tab
+                    if (this.getAttribute('href') === '#analytics') {
+                        setTimeout(() => {
+                            updateCharts();
+                        }, 300);
+                    }
+                });
+            });
+        });
+
+        // Debounce function for search
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Auto refresh data every 30 seconds
+        setInterval(() => {
+            if (isFirebaseConnected) {
+                console.log('🔄 Auto refreshing data...');
+                // Data will be updated automatically via real-time listener
+            }
+        }, 30000);
+    </script>
+</body>
+</html><!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -11,11 +311,11 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css" rel="stylesheet">
     <!-- Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
-    <!-- Firebase v9 -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        
+    <!-- Firebase v8 (Compat) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.min.js"></script>
+    
+    <script>
         // Firebase config
         const firebaseConfig = {
             apiKey: "AIzaSyBSp7kuXi5hHWcISGQ2nSgL2T3nPMaFrls",
@@ -28,14 +328,10 @@
         };
 
         // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
         
-        // Make Firebase functions available globally
-        window.firebaseDB = db;
-        window.getDocs = getDocs;
-        window.collection = collection;
-        window.onSnapshot = onSnapshot;
+        console.log('Firebase initialized successfully');
     </script>
     
     <style>
@@ -573,11 +869,15 @@
                 <div class="status-indicators">
                     <div style="display: flex; align-items: center;">
                         <div class="status-dot bg-success"></div>
-                        <span id="firebaseStatus">Firebase Connected</span>
+                        <span id="firebaseStatus">Connecting...</span>
                     </div>
                     <div style="display: flex; align-items: center;">
                         <div class="status-dot bg-info pulse"></div>
                         <span>Real-time Sync</span>
+                    </div>
+                    <div style="display: flex; align-items: center; cursor: pointer;" onclick="window.open('https://console.firebase.google.com/project/dbnala-6fcf1/firestore', '_blank')">
+                        <div class="status-dot bg-warning"></div>
+                        <span>Open Firestore</span>
                     </div>
                 </div>
             </div>
@@ -775,9 +1075,36 @@
         </div>
 
         <!-- Floating Action Button -->
-        <button class="fab" onclick="addCustomer()">
-            <i class="bi bi-plus-lg"></i>
-        </button>
+        <div class="position-fixed" style="bottom: 30px; right: 30px; z-index: 1000;">
+            <!-- Main FAB -->
+            <button class="fab mb-2" onclick="addCustomer()">
+                <i class="bi bi-plus-lg"></i>
+            </button>
+            
+            <!-- Debug FABs -->
+            <div class="d-flex flex-column gap-2">
+                <button class="btn btn-sm btn-warning rounded-circle" 
+                        style="width: 45px; height: 45px;" 
+                        onclick="checkFirestoreAccess()" 
+                        title="Check Firestore Access">
+                    <i class="bi bi-shield-check"></i>
+                </button>
+                
+                <button class="btn btn-sm btn-info rounded-circle" 
+                        style="width: 45px; height: 45px;" 
+                        onclick="addSampleData()" 
+                        title="Add Sample Data">
+                    <i class="bi bi-database-add"></i>
+                </button>
+                
+                <button class="btn btn-sm btn-success rounded-circle" 
+                        style="width: 45px; height: 45px;" 
+                        onclick="loadData()" 
+                        title="Reload Data">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Bootstrap JS -->
@@ -799,162 +1126,284 @@
 
         // Load data from Firestore
         async function loadData() {
-            console.log('Loading data...');
+            console.log('🔥 Starting to load data from Firebase...');
+            
             try {
-                if (window.firebaseDB && window.getDocs && window.collection) {
-                    console.log('Firebase available, attempting to load data...');
-                    
-                    const querySnapshot = await window.getDocs(window.collection(window.firebaseDB, 'customers'));
-                    customers = [];
-                    
-                    querySnapshot.forEach((doc) => {
+                // Test Firebase connection first
+                console.log('🔗 Testing Firebase connection...');
+                
+                // Try to get data from Firestore
+                const snapshot = await db.collection('customers').get();
+                console.log('📊 Firestore query executed, snapshot size:', snapshot.size);
+                
+                customers = [];
+                
+                if (snapshot.empty) {
+                    console.log('📭 No documents found in customers collection');
+                    console.log('🎭 Using mock data as fallback');
+                    customers = getMockData();
+                    isFirebaseConnected = false;
+                    updateFirebaseStatus(false, 'No data in Firestore');
+                } else {
+                    console.log('📚 Found documents, processing...');
+                    snapshot.forEach((doc) => {
                         const data = doc.data();
-                        console.log('Document data:', data);
+                        console.log(`📄 Document ${doc.id}:`, data);
                         customers.push({ id: doc.id, ...data });
                     });
-
-                    console.log('Loaded customers from Firebase:', customers.length);
                     
-                    if (customers.length === 0) {
-                        console.log('No data in Firebase, using mock data');
-                        customers = getMockData();
-                    }
-                    
+                    console.log('✅ Successfully loaded', customers.length, 'customers from Firebase');
                     isFirebaseConnected = true;
-                    updateFirebaseStatus(true);
+                    updateFirebaseStatus(true, 'Connected to Firestore');
                     
                     // Setup real-time listener
                     setupRealtimeListener();
-                    
-                } else {
-                    throw new Error('Firebase not available');
                 }
+                
             } catch (error) {
-                console.error('Firebase error:', error);
-                console.log('Using mock data as fallback');
+                console.error('❌ Firebase error:', error);
+                console.log('🎭 Falling back to mock data');
                 customers = getMockData();
                 isFirebaseConnected = false;
-                updateFirebaseStatus(false);
+                updateFirebaseStatus(false, `Error: ${error.message}`);
             }
             
+            console.log('📊 Final customers data:', customers);
             updateUI();
             hideLoading();
         }
 
         // Setup real-time listener
         function setupRealtimeListener() {
-            if (!window.onSnapshot || !window.collection || !window.firebaseDB) return;
-            
             try {
-                window.onSnapshot(window.collection(window.firebaseDB, 'customers'), (snapshot) => {
-                    console.log('Real-time update received');
+                console.log('👂 Setting up real-time listener...');
+                db.collection('customers').onSnapshot((snapshot) => {
+                    console.log('🔄 Real-time update received, size:', snapshot.size);
                     customers = [];
                     snapshot.forEach((doc) => {
                         customers.push({ id: doc.id, ...doc.data() });
                     });
+                    console.log('🔄 Updated customers:', customers.length);
                     updateUI();
+                }, (error) => {
+                    console.error('❌ Real-time listener error:', error);
                 });
             } catch (error) {
-                console.error('Real-time listener error:', error);
+                console.error('❌ Failed to setup real-time listener:', error);
             }
         }
 
-        // Update Firebase status
-        function updateFirebaseStatus(connected) {
+        // Update Firebase status with more detail
+        function updateFirebaseStatus(connected, message) {
             const statusElement = document.getElementById('firebaseStatus');
             if (statusElement) {
                 statusElement.textContent = connected ? 'Firebase Connected' : 'Firebase Disconnected';
+                console.log('🔥 Firebase Status:', message);
             }
         }
 
-        // Mock data
+        // Add function to manually add sample data to Firestore
+        async function addSampleData() {
+            if (!isFirebaseConnected) {
+                alert('Firebase tidak terhubung!');
+                return;
+            }
+            
+            try {
+                const sampleData = getMockData();
+                console.log('📝 Adding sample data to Firestore...');
+                
+                for (const customer of sampleData) {
+                    const { id, ...customerData } = customer;
+                    await db.collection('customers').doc(id).set(customerData);
+                    console.log(`✅ Added customer: ${customer.name}`);
+                }
+                
+                alert('Sample data berhasil ditambahkan ke Firestore!');
+                loadData(); // Reload data
+            } catch (error) {
+                console.error('❌ Error adding sample data:', error);
+                alert('Error menambahkan data: ' + error.message);
+            }
+        }
+
+        // Add button to check Firestore rules
+        async function checkFirestoreAccess() {
+            try {
+                console.log('🔐 Checking Firestore access...');
+                
+                // Try to read
+                const testRead = await db.collection('customers').limit(1).get();
+                console.log('✅ Read access: OK');
+                
+                // Try to write (test document)
+                await db.collection('test').doc('access-test').set({
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    test: true
+                });
+                console.log('✅ Write access: OK');
+                
+                // Clean up test document
+                await db.collection('test').doc('access-test').delete();
+                console.log('✅ Delete access: OK');
+                
+                alert('Firestore access: ✅ ALL OK\n\nRead: ✅\nWrite: ✅\nDelete: ✅');
+                
+            } catch (error) {
+                console.error('❌ Firestore access error:', error);
+                
+                let errorMessage = 'Firestore Access Error:\n\n';
+                if (error.code === 'permission-denied') {
+                    errorMessage += '🔒 Permission Denied\n';
+                    errorMessage += 'Firestore rules mungkin terlalu ketat.\n\n';
+                    errorMessage += 'Coba atur rules menjadi:\n';
+                    errorMessage += 'allow read, write: if true;';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                alert(errorMessage);
+            }
+        }
+
+        // Mock data dengan struktur yang sesuai Firestore
         function getMockData() {
             return [
                 {
                     id: "1",
-                    name: "Adnan",
-                    address: "Patra Residence Blok F No 26",
-                    phone: "081234567890",
+                    name: "BINTANG",
+                    address: "CASTANEA CROSS NO 50",
+                    phone: "0853-4295-7709",
+                    acBrand: "Lainnya",
+                    acCount: 1,
                     acUnits: [
-                        { brand: "Samsung", model: "Split Wall 1 PK", freon: "R410A", location: "Kamar Utama" },
-                        { brand: "Samsung", model: "Split Wall 1 PK", freon: "R410A", location: "Kamar Tamu" }
+                        {
+                            brand: "Lainnya",
+                            type: "Split Wall",
+                            pk: "1 PK",
+                            condition: "Baik",
+                            freon: "R410A",
+                            location: "KAMAR"
+                        }
                     ],
-                    lastService: "04 Juli 2025",
-                    serviceMonth: "Juli",
-                    technician: "AGUS DAN PUTRA",
-                    payment: 160000,
-                    status: "completed"
+                    serviceDate: "2025-06-14",
+                    technician: "SATRIA DAN DIMAS",
+                    payment: 500000,
+                    notes: "CUCI AC",
+                    createdAt: new Date("2025-06-28T19:07:39+08:00"),
+                    updatedAt: new Date("2025-06-28T22:36:51+08:00")
                 },
                 {
                     id: "2",
-                    name: "Hasnawati",
-                    address: "Jln. Terong 63. Sekat Almarkas jl. Mesjid Raya",
-                    phone: "085242811957",
+                    name: "ADNAN PRATAMA",
+                    address: "PATRA RESIDENCE BLOK F NO 26",
+                    phone: "081234567890",
+                    acBrand: "Samsung",
+                    acCount: 2,
                     acUnits: [
-                        { brand: "Daikin", model: "Split Wall 0.5 PK", freon: "R32", location: "Kamar Baik" }
+                        {
+                            brand: "Samsung",
+                            type: "Split Wall",
+                            pk: "1 PK",
+                            condition: "Baik",
+                            freon: "R410A",
+                            location: "KAMAR UTAMA"
+                        },
+                        {
+                            brand: "Samsung",
+                            type: "Split Wall",
+                            pk: "1 PK",
+                            condition: "Baik",
+                            freon: "R410A",
+                            location: "KAMAR TAMU"
+                        }
                     ],
-                    lastService: "04 Juli 2025",
-                    serviceMonth: "Juli",
+                    serviceDate: "2025-07-04",
                     technician: "AGUS DAN PUTRA",
-                    payment: 80000,
-                    status: "completed"
+                    payment: 160000,
+                    notes: "SERVICE RUTIN",
+                    createdAt: new Date("2025-07-01T10:00:00+08:00"),
+                    updatedAt: new Date("2025-07-04T15:30:00+08:00")
                 },
                 {
                     id: "3",
-                    name: "Aqshal",
-                    address: "Perumahan Phinisi Nusantara Blok E6",
-                    phone: "082345606054",
+                    name: "HASNAWATI",
+                    address: "JLN. TERONG 63. SEKAT ALMARKAS JL. MESJID RAYA",
+                    phone: "085242811957",
+                    acBrand: "Daikin",
+                    acCount: 1,
                     acUnits: [
-                        { brand: "Daikin", model: "Split Wall 0.5 PK", freon: "R22", location: "Kamar Baik" }
+                        {
+                            brand: "Daikin",
+                            type: "Split Wall",
+                            pk: "0.5 PK",
+                            condition: "Baik",
+                            freon: "R32",
+                            location: "KAMAR"
+                        }
                     ],
-                    lastService: "04 Juli 2025",
-                    serviceMonth: "Juli",
-                    technician: "SATRIA DAN WAHYU",
-                    payment: 150000,
-                    status: "in_progress"
+                    serviceDate: "2025-07-04",
+                    technician: "AGUS DAN PUTRA",
+                    payment: 80000,
+                    notes: "PEMBERSIHAN AC",
+                    createdAt: new Date("2025-07-02T14:20:00+08:00"),
+                    updatedAt: new Date("2025-07-04T16:45:00+08:00")
                 },
                 {
                     id: "4",
-                    name: "Budi Santoso",
-                    address: "Jln. Mawar No. 15",
+                    name: "BUDI SANTOSO",
+                    address: "JLN. MAWAR NO. 15",
                     phone: "081234567890",
+                    acBrand: "LG",
+                    acCount: 1,
                     acUnits: [
-                        { brand: "LG", model: "Split Wall 1.5 PK", freon: "R32", location: "Ruang Tamu" }
+                        {
+                            brand: "LG",
+                            type: "Split Wall",
+                            pk: "1.5 PK",
+                            condition: "Baik",
+                            freon: "R32",
+                            location: "RUANG TAMU"
+                        }
                     ],
-                    lastService: "15 Juni 2025",
-                    serviceMonth: "Juni",
+                    serviceDate: "2025-06-15",
                     technician: "AGUS DAN PUTRA",
                     payment: 200000,
-                    status: "completed"
+                    notes: "CUCI AC + TAMBAH FREON",
+                    createdAt: new Date("2025-06-10T09:15:00+08:00"),
+                    updatedAt: new Date("2025-06-15T11:30:00+08:00")
                 },
                 {
                     id: "5",
-                    name: "Sari Dewi",
-                    address: "Komplek Graha Indah Blok C12",
+                    name: "SARI DEWI",
+                    address: "KOMPLEK GRAHA INDAH BLOK C12",
                     phone: "082345678901",
+                    acBrand: "Panasonic",
+                    acCount: 2,
                     acUnits: [
-                        { brand: "Panasonic", model: "Split Wall 1 PK", freon: "R410A", location: "Kamar Utama" },
-                        { brand: "Samsung", model: "Split Wall 0.5 PK", freon: "R32", location: "Kamar Anak" }
+                        {
+                            brand: "Panasonic",
+                            type: "Split Wall",
+                            pk: "1 PK",
+                            condition: "Baik",
+                            freon: "R410A",
+                            location: "KAMAR UTAMA"
+                        },
+                        {
+                            brand: "Samsung",
+                            type: "Split Wall",
+                            pk: "0.5 PK",
+                            condition: "Baik",
+                            freon: "R32",
+                            location: "KAMAR ANAK"
+                        }
                     ],
-                    lastService: "20 Mei 2025",
-                    serviceMonth: "Mei",
+                    serviceDate: "2025-05-20",
                     technician: "SATRIA DAN WAHYU",
                     payment: 180000,
-                    status: "completed"
-                },
-                {
-                    id: "6",
-                    name: "Ahmad Rizki",
-                    address: "Perumahan Citra Garden Blok A5",
-                    phone: "083456789012",
-                    acUnits: [
-                        { brand: "Mitsubishi", model: "Split Wall 2 PK", freon: "R410A", location: "Ruang Keluarga" }
-                    ],
-                    lastService: "10 April 2025",
-                    serviceMonth: "April",
-                    technician: "AGUS DAN PUTRA",
-                    payment: 250000,
-                    status: "completed"
+                    notes: "SERVICE BERKALA",
+                    createdAt: new Date("2025-05-15T13:45:00+08:00"),
+                    updatedAt: new Date("2025-05-20T16:20:00+08:00")
                 }
             ];
         }
@@ -967,16 +1416,34 @@
             updateRecentActivities();
         }
 
-        // Update statistics
+        // Update statistics sesuai struktur data baru
         function updateStats() {
             const totalCustomers = customers.length;
             const totalACUnits = customers.reduce((sum, customer) => 
-                sum + (customer.acUnits ? customer.acUnits.length : 0), 0);
+                sum + (customer.acCount || (customer.acUnits ? customer.acUnits.length : 0)), 0);
             const totalPayments = customers.reduce((sum, customer) => sum + (customer.payment || 0), 0);
-            const servicesThisMonth = customers.filter(c => 
-                c.lastService && c.lastService.includes('Juli 2025')).length;
+            
+            // Hitung services bulan ini berdasarkan serviceDate
+            const currentMonth = new Date().getMonth() + 1; // Juli = 7
+            const currentYear = new Date().getFullYear();
+            const servicesThisMonth = customers.filter(c => {
+                if (!c.serviceDate) return false;
+                const serviceDate = new Date(c.serviceDate);
+                return serviceDate.getMonth() + 1 === currentMonth && serviceDate.getFullYear() === currentYear;
+            }).length;
+            
             const avgPayment = totalCustomers > 0 ? totalPayments / totalCustomers : 0;
-            const activeServices = customers.filter(c => c.status === 'in_progress').length;
+            
+            // Status berdasarkan tanggal service (jika hari ini atau kemarin = active)
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            const activeServices = customers.filter(c => {
+                if (!c.serviceDate) return false;
+                const serviceDate = new Date(c.serviceDate);
+                return serviceDate >= yesterday;
+            }).length;
 
             // Animate numbers
             animateValue('totalCustomers', 0, totalCustomers, 1000);
@@ -1083,16 +1550,29 @@
             }
         }
 
-        // Revenue chart
+        // Revenue chart berdasarkan serviceDate
         function updateRevenueChart() {
             const monthlyRevenue = {};
+            
             customers.forEach(customer => {
-                const month = customer.serviceMonth || 'Unknown';
-                monthlyRevenue[month] = (monthlyRevenue[month] || 0) + (customer.payment || 0);
+                if (customer.serviceDate) {
+                    const date = new Date(customer.serviceDate);
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 
+                                       'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                    const monthKey = monthNames[date.getMonth()] + ' ' + date.getFullYear();
+                    monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + (customer.payment || 0);
+                }
             });
 
-            const labels = Object.keys(monthlyRevenue);
-            const data = Object.values(monthlyRevenue);
+            // Sort by date
+            const sortedEntries = Object.entries(monthlyRevenue).sort((a, b) => {
+                const dateA = new Date(a[0]);
+                const dateB = new Date(b[0]);
+                return dateA - dateB;
+            });
+
+            const labels = sortedEntries.map(([month]) => month);
+            const data = sortedEntries.map(([, revenue]) => revenue);
             const totalRevenue = data.reduce((a, b) => a + b, 0);
 
             if (charts.revenueChart) {
@@ -1146,17 +1626,29 @@
             }
         }
 
-        // Mini chart for dashboard
+        // Mini chart untuk dashboard
         function updateMiniChart() {
             const monthlyRevenue = {};
+            
             customers.forEach(customer => {
-                const month = customer.serviceMonth || 'Unknown';
-                monthlyRevenue[month] = (monthlyRevenue[month] || 0) + (customer.payment || 0);
+                if (customer.serviceDate) {
+                    const date = new Date(customer.serviceDate);
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 
+                                       'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                    const monthKey = monthNames[date.getMonth()] + ' ' + date.getFullYear();
+                    monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + (customer.payment || 0);
+                }
             });
 
-            const sortedMonths = Object.keys(monthlyRevenue).sort();
-            const labels = sortedMonths.slice(-4); // Last 4 months
-            const data = labels.map(month => monthlyRevenue[month]);
+            // Sort dan ambil 4 bulan terakhir
+            const sortedEntries = Object.entries(monthlyRevenue).sort((a, b) => {
+                const dateA = new Date(a[0]);
+                const dateB = new Date(b[0]);
+                return dateA - dateB;
+            }).slice(-4);
+
+            const labels = sortedEntries.map(([month]) => month);
+            const data = sortedEntries.map(([, revenue]) => revenue);
 
             if (charts.miniChart) {
                 charts.miniChart.destroy();
