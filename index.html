@@ -1,339 +1,9 @@
-// Update customer list sesuai struktur data baru
-        function updateCustomerList() {
-            const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
-            const statusFilter = document.getElementById('statusFilter')?.value || '';
-
-            const filteredCustomers = customers.filter(customer => {
-                const matchesSearch = customer.name.toLowerCase().includes(searchTerm) ||
-                                    customer.address.toLowerCase().includes(searchTerm) ||
-                                    customer.phone.includes(searchTerm);
-                
-                // Filter berdasarkan tanggal service (recent = completed, today = in_progress)
-                let customerStatus = 'completed';
-                if (customer.serviceDate) {
-                    const serviceDate = new Date(customer.serviceDate);
-                    const today = new Date();
-                    const diffTime = Math.abs(today - serviceDate);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    
-                    if (diffDays <= 1) customerStatus = 'in_progress';
-                    else if (diffDays <= 7) customerStatus = 'completed';
-                    else customerStatus = 'pending';
-                }
-                
-                const matchesFilter = !statusFilter || customerStatus === statusFilter;
-                
-                return matchesSearch && matchesFilter;
-            });
-
-            const customerListHTML = filteredCustomers.map((customer, index) => {
-                // Determine status
-                let statusClass = 'completed';
-                let statusText = 'Selesai';
-                
-                if (customer.serviceDate) {
-                    const serviceDate = new Date(customer.serviceDate);
-                    const today = new Date();
-                    const diffTime = Math.abs(today - serviceDate);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    
-                    if (diffDays <= 1) {
-                        statusClass = 'in_progress';
-                        statusText = 'Sedang Dikerjakan';
-                    } else if (diffDays <= 7) {
-                        statusClass = 'completed';
-                        statusText = 'Selesai';
-                    } else {
-                        statusClass = 'pending';
-                        statusText = 'Perlu Follow Up';
-                    }
-                }
-
-                return `
-                <div class="customer-card fade-in" style="animation-delay: ${index * 0.1}s;">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div class="flex-grow-1">
-                            <div class="customer-name">${customer.name}</div>
-                            <div class="customer-info">
-                                <i class="bi bi-geo-alt-fill"></i>
-                                ${customer.address}
-                            </div>
-                            ${customer.phone ? `
-                                <div class="customer-info">
-                                    <i class="bi bi-telephone-fill"></i>
-                                    ${customer.phone}
-                                </div>
-                            ` : ''}
-                        </div>
-                        <span class="status-badge status-${statusClass}">
-                            ${statusText}
-                        </span>
-                    </div>
-
-                    <!-- AC Units -->
-                    <div class="ac-units-container">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-wind me-2" style="color: var(--secondary);"></i>
-                                <span style="font-weight: 600; color: var(--dark);">
-                                    ${customer.acCount || (customer.acUnits ? customer.acUnits.length : 0)} Unit AC
-                                </span>
-                            </div>
-                            <div class="badge" style="background: var(--gradient-orange); color: white;">
-                                ${customer.acBrand || 'Unknown'}
-                            </div>
-                        </div>
-                        ${customer.acUnits ? customer.acUnits.map((unit, index) => `
-                            <div class="ac-unit">
-                                <strong>AC ${index + 1}:</strong> ${unit.brand} ${unit.type} ${unit.pk}<br>
-                                <small class="text-muted">
-                                    Freon: ${unit.freon} • Lokasi: ${unit.location} • Kondisi: ${unit.condition}
-                                </small>
-                            </div>
-                        `).join('') : '<div class="ac-unit">Tidak ada detail AC</div>'}
-                    </div>
-
-                    <!-- Service Info -->
-                    <div class="service-info">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-calendar-check me-2" style="color: var(--success);"></i>
-                            <small>${customer.serviceDate ? formatDate(customer.serviceDate) : 'Belum ada service'}</small>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-tools me-2" style="color: var(--warning);"></i>
-                            <small>${customer.technician || 'Belum ditentukan'}</small>
-                        </div>
-                    </div>
-
-                    ${customer.notes ? `
-                        <div class="mt-3 p-2 rounded-3" style="background: rgba(74,144,226,0.1);">
-                            <small><strong>Notes:</strong> ${customer.notes}</small>
-                        </div>
-                    ` : ''}
-
-                    <div style="border-top: 1px solid #e9ecef; padding-top: 15px; margin-top: 15px;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span style="color: #6c757d; font-weight: 600;">Payment:</span>
-                            <span class="payment-amount">${formatCurrency(customer.payment || 0)}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            }).join('');
-
-            const customerListElement = document.getElementById('customerList');
-            const noResultsElement = document.getElementById('noResults');
-            
-            if (filteredCustomers.length === 0) {
-                if (customerListElement) customerListElement.innerHTML = '';
-                if (noResultsElement) noResultsElement.style.display = 'block';
-            } else {
-                if (customerListElement) customerListElement.innerHTML = customerListHTML;
-                if (noResultsElement) noResultsElement.style.display = 'none';
-            }
-        }
-
-        // Update recent activities sesuai struktur data baru
-        function updateRecentActivities() {
-            // Sort berdasarkan serviceDate terbaru
-            const sortedCustomers = [...customers].sort((a, b) => {
-                const dateA = new Date(a.serviceDate || 0);
-                const dateB = new Date(b.serviceDate || 0);
-                return dateB - dateA;
-            });
-
-            const recentCustomers = sortedCustomers.slice(0, 3);
-            const activitiesHTML = recentCustomers.map((customer, index) => `
-                <div class="d-flex align-items-center p-3 mb-2 rounded-3" 
-                     style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); animation-delay: ${index * 0.1}s;" 
-                     class="fade-in">
-                    <div class="me-3" style="width: 50px; height: 50px; border-radius: 15px; background: var(--gradient-orange); color: white; display: flex; align-items: center; justify-content: center;">
-                        <i class="bi bi-tools"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div style="font-weight: 700; color: var(--dark);">${customer.name}</div>
-                        <small style="color: #6c757d;">
-                            Service • ${customer.serviceDate ? formatDate(customer.serviceDate) : 'Belum ada service'}
-                        </small>
-                        ${customer.notes ? `<br><small style="color: #6c757d; font-style: italic;">${customer.notes}</small>` : ''}
-                    </div>
-                    <div class="text-end">
-                        <div class="payment-amount" style="font-size: 16px;">${formatCurrency(customer.payment || 0)}</div>
-                        <small style="color: #6c757d;">${customer.technician || 'TBD'}</small>
-                    </div>
-                </div>
-            `).join('');
-
-            const recentActivitiesElement = document.getElementById('recentActivities');
-            if (recentActivitiesElement) {
-                recentActivitiesElement.innerHTML = activitiesHTML || '<p class="text-muted text-center">Belum ada aktivitas</p>';
-            }
-        }
-
-        // Utility functions
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0
-            }).format(amount);
-        }
-
-        function formatDate(dateString) {
-            if (!dateString) return 'Belum ada tanggal';
-            
-            const date = new Date(dateString);
-            const options = { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                timeZone: 'Asia/Jakarta'
-            };
-            return date.toLocaleDateString('id-ID', options);
-        }
-
-        function getStatusText(status) {
-            switch(status) {
-                case 'completed': return 'Selesai';
-                case 'in_progress': return 'Sedang Dikerjakan';
-                case 'pending': return 'Pending';
-                default: return 'Unknown';
-            }
-        }
-
-        function hexToRgb(hex) {
-            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? 
-                `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : 
-                '0, 0, 0';
-        }
-
-        function hideLoading() {
-            const loadingScreen = document.getElementById('loadingScreen');
-            const app = document.getElementById('app');
-            
-            if (loadingScreen) {
-                loadingScreen.style.opacity = '0';
-                setTimeout(() => {
-                    loadingScreen.style.display = 'none';
-                    if (app) {
-                        app.style.display = 'block';
-                        app.classList.add('fade-in');
-                    }
-                }, 500);
-            }
-        }
-
-        function exportData() {
-            const csvContent = "data:text/csv;charset=utf-8," + 
-                "Name,Address,Phone,AC Count,AC Brand,Service Date,Technician,Payment,Notes\n" +
-                customers.map(customer => 
-                    `"${customer.name}","${customer.address}","${customer.phone || ''}",${customer.acCount || 0},"${customer.acBrand || ''}","${customer.serviceDate || ''}","${customer.technician || ''}",${customer.payment || 0},"${customer.notes || ''}"`
-                ).join("\n");
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "nala_aircon_customers.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function addCustomer() {
-            // Show modal or redirect to add customer page
-            if (confirm('Apakah Anda ingin menambah customer baru?\n\nFitur ini akan segera tersedia!')) {
-                // Placeholder for add customer functionality
-                console.log('Add customer feature coming soon!');
-            }
-        }
-
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // Search functionality
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput) {
-                searchInput.addEventListener('input', debounce(updateCustomerList, 300));
-            }
-
-            // Filter functionality  
-            const statusFilter = document.getElementById('statusFilter');
-            if (statusFilter) {
-                statusFilter.addEventListener('change', updateCustomerList);
-            }
-
-            // Tab change events
-            const tabLinks = document.querySelectorAll('[data-bs-toggle="pill"]');
-            tabLinks.forEach(link => {
-                link.addEventListener('shown.bs.tab', function() {
-                    // Refresh charts when switching to analytics tab
-                    if (this.getAttribute('href') === '#analytics') {
-                        setTimeout(() => {
-                            updateCharts();
-                        }, 300);
-                    }
-                });
-            });
-        });
-
-        // Debounce function for search
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-
-        // Auto refresh data every 30 seconds
-        setInterval(() => {
-            if (isFirebaseConnected) {
-                console.log('🔄 Auto refreshing data...');
-                // Data will be updated automatically via real-time listener
-            }
-        }, 30000);
-    </script>
-</body>
-</html><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nala Aircon - Mobile Dashboard</title>
-    
-    <!-- Bootstrap 5.3 CSS -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css" rel="stylesheet">
-    <!-- Chart.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
-    <!-- Firebase v8 (Compat) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.min.js"></script>
-    
-    <script>
-        // Firebase config
-        const firebaseConfig = {
-            apiKey: "AIzaSyBSp7kuXi5hHWcISGQ2nSgL2T3nPMaFrls",
-            authDomain: "dbnala-6fcf1.firebaseapp.com",
-            projectId: "dbnala-6fcf1",
-            storageBucket: "dbnala-6fcf1.firebasestorage.app",
-            messagingSenderId: "1081263780872",
-            appId: "1:1081263780872:web:3df5c78d708e5b1ffb4dbd",
-            measurementId: "G-KLVLB8YQ34"
-        };
-
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        
-        console.log('Firebase initialized successfully');
-    </script>
-    
     <style>
         * {
             margin: 0;
@@ -341,74 +11,27 @@
             box-sizing: border-box;
         }
 
-        :root {
-            --primary: #FF6B35;
-            --secondary: #4A90E2;
-            --success: #27AE60;
-            --warning: #F39C12;
-            --danger: #E74C3C;
-            --purple: #9B59B6;
-            --dark: #2C3E50;
-            --light: #F8F9FA;
-            --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-orange: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
-            --gradient-blue: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
-            --gradient-green: linear-gradient(135deg, #27AE60 0%, #2ECC71 100%);
-            --shadow: 0 10px 30px rgba(0,0,0,0.1);
-            --shadow-hover: 0 15px 40px rgba(0,0,0,0.15);
-        }
-
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            color: var(--dark);
+            color: #333;
             overflow-x: hidden;
         }
 
-        /* Loading Screen */
-        .loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--gradient-bg);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease;
+        .mobile-container {
+            max-width: 420px;
+            margin: 0 auto;
+            background: #f8fafc;
+            min-height: 100vh;
+            position: relative;
+            box-shadow: 0 0 30px rgba(0,0,0,0.2);
         }
 
-        .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loading-text {
-            color: white;
-            margin-top: 20px;
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        /* Header */
         .header {
-            background: var(--gradient-orange);
+            background: linear-gradient(135deg, #FF5722, #E64A19);
             color: white;
-            padding: 20px;
-            border-radius: 0 0 30px 30px;
-            box-shadow: var(--shadow);
+            padding: 20px 20px 30px;
             position: relative;
             overflow: hidden;
         }
@@ -417,76 +40,129 @@
             content: '';
             position: absolute;
             top: -50%;
-            right: -20%;
-            width: 100%;
+            right: -50%;
+            width: 200%;
             height: 200%;
-            background: rgba(255,255,255,0.1);
-            transform: rotate(15deg);
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            animation: float 20s linear infinite;
         }
 
-        .header-content {
+        @keyframes float {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
             position: relative;
             z-index: 2;
         }
 
         .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 15px;
+            gap: 8px;
         }
 
-        .logo-icon {
-            width: 50px;
-            height: 50px;
+        .notification-btn {
             background: rgba(255,255,255,0.2);
-            border-radius: 15px;
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 18px;
+            cursor: pointer;
             backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
         }
 
-        .status-indicators {
-            display: flex;
-            gap: 20px;
-            font-size: 14px;
+        .notification-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+
+        .welcome-text {
+            position: relative;
+            z-index: 2;
+        }
+
+        .welcome-text h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+
+        .welcome-text p {
             opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(76, 175, 80, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 2;
         }
 
         .status-dot {
             width: 8px;
             height: 8px;
+            background: #4CAF50;
             border-radius: 50%;
-            margin-right: 8px;
-        }
-
-        .pulse {
             animation: pulse 2s infinite;
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
         }
 
-        /* Stats Cards */
-        .stats-container {
+        .main-content {
             padding: 20px;
-            margin-top: -15px;
+            margin-top: -20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
         }
 
         .stat-card {
             background: white;
+            padding: 20px;
             border-radius: 20px;
-            padding: 25px 20px;
-            box-shadow: var(--shadow);
-            border: none;
-            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
             position: relative;
             overflow: hidden;
-            height: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.12);
         }
 
         .stat-card::before {
@@ -494,1435 +170,1315 @@
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
+            width: 100%;
             height: 4px;
-            background: var(--gradient-orange);
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-hover);
+            background: linear-gradient(135deg, #FF5722, #E64A19);
         }
 
         .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 15px;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #FF5722, #E64A19);
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
-            margin-bottom: 15px;
+            font-size: 18px;
+            color: white;
+            margin-bottom: 12px;
         }
 
-        .stat-value {
-            font-size: 28px;
+        .stat-number {
+            font-size: 1.5rem;
             font-weight: 800;
-            color: var(--dark);
+            color: #FF5722;
             margin-bottom: 5px;
         }
 
         .stat-label {
-            color: #6c757d;
-            font-size: 14px;
+            font-size: 0.8rem;
+            color: #64748b;
             font-weight: 500;
         }
 
-        /* Navigation */
-        .nav-container {
-            padding: 0 20px;
-            margin: 20px 0;
-        }
-
-        .nav-pills {
-            background: white;
-            border-radius: 20px;
-            padding: 8px;
-            box-shadow: var(--shadow);
-        }
-
-        .nav-pills .nav-link {
-            border-radius: 15px;
-            padding: 12px 20px;
-            font-weight: 600;
-            color: #6c757d;
-            transition: all 0.3s ease;
-            border: none;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .nav-pills .nav-link.active {
-            background: var(--gradient-orange);
-            color: white;
-            transform: scale(1.05);
-            box-shadow: 0 5px 15px rgba(255,107,53,0.4);
-        }
-
-        .nav-pills .nav-link i {
-            margin-right: 8px;
-            font-size: 16px;
-        }
-
-        /* Content */
-        .content-container {
-            padding: 0 20px 100px;
-        }
-
-        .card-modern {
-            background: white;
-            border-radius: 20px;
-            border: none;
-            box-shadow: var(--shadow);
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .card-modern:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-hover);
-        }
-
-        .card-header-modern {
-            background: var(--gradient-blue);
-            color: white;
-            padding: 20px;
-            border: none;
-            font-weight: 600;
-            font-size: 18px;
-        }
-
-        /* Customer Cards */
-        .customer-card {
+        .chart-section {
             background: white;
             border-radius: 20px;
             padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: var(--shadow);
-            border: none;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
         }
 
-        .customer-card::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: var(--gradient-orange);
-        }
-
-        .customer-card:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-hover);
-        }
-
-        .customer-name {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--dark);
-            margin-bottom: 8px;
-        }
-
-        .customer-info {
-            color: #6c757d;
-            font-size: 14px;
-            margin-bottom: 5px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .ac-units-container {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-radius: 15px;
-            padding: 15px;
-            margin: 15px 0;
-        }
-
-        .ac-unit {
-            background: white;
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 8px;
-            border-left: 4px solid var(--secondary);
-            font-size: 13px;
-        }
-
-        .ac-unit:last-child {
-            margin-bottom: 0;
-        }
-
-        .service-info {
+        .chart-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-top: 15px;
-            border-top: 1px solid #e9ecef;
-            font-size: 14px;
-        }
-
-        .payment-amount {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--success);
-        }
-
-        .status-badge {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .status-completed {
-            background: rgba(39,174,96,0.1);
-            color: var(--success);
-        }
-
-        .status-in_progress {
-            background: rgba(243,156,18,0.1);
-            color: var(--warning);
-        }
-
-        .status-pending {
-            background: rgba(231,76,60,0.1);
-            color: var(--danger);
-        }
-
-        /* Search and Filter */
-        .search-container {
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
             margin-bottom: 20px;
-            box-shadow: var(--shadow);
-        }
-
-        .form-control-modern {
-            border: 2px solid #e9ecef;
-            border-radius: 15px;
-            padding: 15px 20px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .form-control-modern:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 0.2rem rgba(255,107,53,0.25);
-        }
-
-        .btn-modern {
-            border-radius: 15px;
-            padding: 12px 24px;
-            font-weight: 600;
-            border: none;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary-modern {
-            background: var(--gradient-orange);
-            color: white;
-        }
-
-        .btn-primary-modern:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255,107,53,0.3);
-        }
-
-        /* Charts */
-        .chart-container {
-            background: white;
-            border-radius: 20px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: var(--shadow);
         }
 
         .chart-title {
-            font-size: 18px;
+            font-size: 1.1rem;
             font-weight: 700;
-            color: var(--dark);
-            margin-bottom: 20px;
+            color: #1e293b;
+        }
+
+        .chart-toggle {
+            background: #f1f5f9;
+            border-radius: 12px;
+            padding: 4px;
+            display: flex;
+            gap: 4px;
+        }
+
+        .toggle-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: transparent;
+            color: #64748b;
+        }
+
+        .toggle-btn.active {
+            background: #FF5722;
+            color: white;
+            box-shadow: 0 2px 8px rgba(255, 87, 34, 0.3);
+        }
+
+        .chart-container {
+            height: 250px;
+            position: relative;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .action-card {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
         }
 
-        .chart-canvas {
+        .action-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.12);
+        }
+
+        .action-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+        }
+
+        .action-content h3 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 3px;
+            color: #1e293b;
+        }
+
+        .action-content p {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .customer-list {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .list-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .list-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+
+        .search-box {
             position: relative;
-            height: 300px;
         }
 
-        /* Floating Action Button */
+        .search-box input {
+            width: 100%;
+            padding: 12px 40px 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #FF5722;
+            box-shadow: 0 0 20px rgba(255, 87, 34, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+        }
+
+        .customer-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .customer-item:hover {
+            background: #f8fafc;
+        }
+
+        .customer-item:last-child {
+            border-bottom: none;
+        }
+
+        .customer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 8px;
+        }
+
+        .customer-name {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 0.95rem;
+        }
+
+        .customer-badge {
+            background: linear-gradient(135deg, #FF5722, #E64A19);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .customer-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .customer-detail {
+            font-size: 0.8rem;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
         .fab {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
+            bottom: 25px;
+            right: 25px;
             width: 60px;
             height: 60px;
-            border-radius: 50%;
-            background: var(--gradient-orange);
-            color: white;
+            background: linear-gradient(135deg, #FF5722, #E64A19);
             border: none;
+            border-radius: 50%;
+            color: white;
             font-size: 24px;
-            box-shadow: 0 8px 25px rgba(255,107,53,0.4);
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(255, 87, 34, 0.4);
             transition: all 0.3s ease;
-            z-index: 1000;
+            z-index: 100;
         }
 
         .fab:hover {
             transform: scale(1.1);
-            box-shadow: 0 12px 35px rgba(255,107,53,0.5);
+            box-shadow: 0 12px 35px rgba(255, 87, 34, 0.5);
         }
 
-        /* Animations */
-        .fade-in {
-            animation: fadeIn 0.6s ease;
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 420px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-around;
+            padding: 15px 0;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            text-decoration: none;
+            color: #64748b;
+            transition: all 0.3s ease;
+            padding: 5px 15px;
+            border-radius: 12px;
         }
 
-        .slide-up {
-            animation: slideUp 0.5s ease;
+        .nav-item.active {
+            color: #FF5722;
+            background: rgba(255, 87, 34, 0.1);
         }
 
-        @keyframes slideUp {
-            from {
-                transform: translateY(50px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
+        .nav-icon {
+            font-size: 20px;
         }
 
-        /* Responsive */
-        @media (max-width: 576px) {
-            .header {
-                padding: 15px;
+        .nav-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            width: 100%;
+            max-width: 380px;
+            margin: 0 auto;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            top: 50%;
+            transform: translateY(-50%);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 15px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f9fafb;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #FF5722;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(255, 87, 34, 0.1);
+        }
+
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #FF5722, #E64A19);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 87, 34, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #64748b;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #FF5722;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 15px;
+            font-weight: 600;
+            z-index: 2000;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        .no-data-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .no-data h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .no-data p {
+            font-size: 0.9rem;
+        }
+
+        .chart-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 250px;
+            background: #f8fafc;
+            border-radius: 15px;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        @media (max-width: 480px) {
+            .mobile-container {
+                max-width: 100%;
             }
             
-            .stats-container {
-                padding: 15px;
+            .stats-grid {
+                gap: 10px;
             }
             
             .stat-card {
-                padding: 20px 15px;
+                padding: 15px;
             }
             
-            .content-container {
-                padding: 0 15px 100px;
+            .quick-actions {
+                gap: 10px;
             }
             
-            .customer-card {
+            .action-card {
                 padding: 15px;
             }
         }
 
-        /* Hide scrollbar but keep functionality */
-        ::-webkit-scrollbar {
-            width: 0px;
-            background: transparent;
+        .ac-types-chart {
+            height: 300px;
+            margin-top: 15px;
+        }
+
+        .chart-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
         }
     </style>
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div id="loadingScreen" class="loading-screen">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Memuat Dashboard...</div>
-        <div style="color: rgba(255,255,255,0.8); margin-top: 10px; font-size: 14px;">
-            Mengambil data dari Firebase...
-        </div>
-    </div>
-
-    <!-- Main App -->
-    <div id="app" style="display: none;">
+    <div class="mobile-container">
         <!-- Header -->
-        <header class="header">
-            <div class="header-content">
+        <div class="header">
+            <div class="header-top">
                 <div class="logo">
-                    <div class="logo-icon">
-                        <i class="bi bi-wind"></i>
-                    </div>
-                    <div>
-                        <h2 style="margin: 0; font-weight: 800;">Nala Aircon</h2>
-                        <p style="margin: 0; opacity: 0.9; font-size: 14px;">Customer & Service Management</p>
-                    </div>
+                    🏠 Nala Aircon
                 </div>
-                
-                <div class="status-indicators">
-                    <div style="display: flex; align-items: center;">
-                        <div class="status-dot bg-success"></div>
-                        <span id="firebaseStatus">Connecting...</span>
-                    </div>
-                    <div style="display: flex; align-items: center;">
-                        <div class="status-dot bg-info pulse"></div>
-                        <span>Real-time Sync</span>
-                    </div>
-                    <div style="display: flex; align-items: center; cursor: pointer;" onclick="window.open('https://console.firebase.google.com/project/dbnala-6fcf1/firestore', '_blank')">
-                        <div class="status-dot bg-warning"></div>
-                        <span>Open Firestore</span>
-                    </div>
-                </div>
+                <button class="notification-btn">🔔</button>
             </div>
-        </header>
-
-        <!-- Stats Cards -->
-        <div class="stats-container">
-            <div class="row g-3">
-                <div class="col-6">
-                    <div class="stat-card slide-up">
-                        <div class="stat-icon" style="background: rgba(74,144,226,0.1); color: var(--secondary);">
-                            <i class="bi bi-people-fill"></i>
-                        </div>
-                        <div class="stat-value" id="totalCustomers">0</div>
-                        <div class="stat-label">Total Customer</div>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="stat-card slide-up" style="animation-delay: 0.1s;">
-                        <div class="stat-icon" style="background: rgba(39,174,96,0.1); color: var(--success);">
-                            <i class="bi bi-wind"></i>
-                        </div>
-                        <div class="stat-value" id="totalACUnits">0</div>
-                        <div class="stat-label">Total AC Unit</div>
-                    </div>
-                </div>
-                <div class="col-12">
-                    <div class="stat-card slide-up" style="animation-delay: 0.2s;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="stat-icon" style="background: rgba(255,107,53,0.1); color: var(--primary);">
-                                    <i class="bi bi-cash-coin"></i>
-                                </div>
-                                <div class="stat-value" id="totalPayments">Rp 0</div>
-                                <div class="stat-label">Total Payment</div>
-                            </div>
-                            <div class="text-end">
-                                <div class="stat-value" style="font-size: 20px;" id="servicesThisMonth">0</div>
-                                <div class="stat-label">Services Bulan Ini</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="welcome-text">
+                <h1>Dashboard</h1>
+                <p>Customer & Service Management</p>
+            </div>
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span>Online</span>
             </div>
         </div>
 
-        <!-- Navigation -->
-        <div class="nav-container">
-            <ul class="nav nav-pills" id="mainTabs">
-                <li class="nav-item flex-fill">
-                    <a class="nav-link active text-center" href="#dashboard" data-bs-toggle="pill">
-                        <i class="bi bi-speedometer2"></i><br>
-                        <small>Dashboard</small>
-                    </a>
-                </li>
-                <li class="nav-item flex-fill">
-                    <a class="nav-link text-center" href="#analytics" data-bs-toggle="pill">
-                        <i class="bi bi-bar-chart-fill"></i><br>
-                        <small>Analytics</small>
-                    </a>
-                </li>
-                <li class="nav-item flex-fill">
-                    <a class="nav-link text-center" href="#customers" data-bs-toggle="pill">
-                        <i class="bi bi-people-fill"></i><br>
-                        <small>Customers</small>
-                    </a>
-                </li>
-            </ul>
-        </div>
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-number" id="totalCustomers">0</div>
+                    <div class="stat-label">Total Customer</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">❄️</div>
+                    <div class="stat-number" id="totalAC">0</div>
+                    <div class="stat-label">AC Units</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-number" id="totalPayment">Rp 0</div>
+                    <div class="stat-label">Total Revenue</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔧</div>
+                    <div class="stat-number" id="recentService">0</div>
+                    <div class="stat-label">Service Bulan Ini</div>
+                </div>
+            </div>
 
-        <!-- Tab Content -->
-        <div class="content-container">
-            <div class="tab-content">
-                <!-- Dashboard Tab -->
-                <div class="tab-pane fade show active" id="dashboard">
-                    <!-- Quick Stats -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-6">
-                            <div class="card-modern" style="background: var(--gradient-blue); color: white;">
-                                <div class="card-body text-center">
-                                    <i class="bi bi-calendar-check" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.8;"></i>
-                                    <h4 class="mb-1" id="avgPayment">Rp 0</h4>
-                                    <small style="opacity: 0.9;">Rata-rata Payment</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="card-modern" style="background: var(--gradient-green); color: white;">
-                                <div class="card-body text-center">
-                                    <i class="bi bi-tools" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.8;"></i>
-                                    <h4 class="mb-1" id="activeServices">0</h4>
-                                    <small style="opacity: 0.9;">Active Services</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Mini Chart -->
-                    <div class="chart-container">
-                        <div class="chart-title">
-                            <i class="bi bi-graph-up" style="color: var(--primary);"></i>
-                            Revenue Overview
-                        </div>
-                        <div class="chart-canvas">
-                            <canvas id="miniChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Recent Activities -->
-                    <div class="card-modern">
-                        <div class="card-header-modern">
-                            <i class="bi bi-clock-history me-2"></i>
-                            Aktivitas Terbaru
-                        </div>
-                        <div class="card-body" id="recentActivities">
-                            <!-- Dynamic content -->
-                        </div>
+            <!-- Monthly Revenue Chart -->
+            <div class="chart-section">
+                <div class="chart-header">
+                    <h3 class="chart-title">Revenue Bulanan</h3>
+                    <div class="chart-toggle">
+                        <button class="toggle-btn active" onclick="switchChart('revenue')">6 Bulan</button>
+                        <button class="toggle-btn" onclick="switchChart('yearly')">Tahunan</button>
                     </div>
                 </div>
+                <div class="chart-container">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
 
-                <!-- Analytics Tab -->
-                <div class="tab-pane fade" id="analytics">
-                    <!-- Brand Distribution -->
-                    <div class="chart-container">
-                        <div class="chart-title">
-                            <i class="bi bi-pie-chart-fill" style="color: var(--primary);"></i>
-                            Distribusi Merek AC
-                        </div>
-                        <div class="chart-canvas">
-                            <canvas id="brandChart"></canvas>
-                        </div>
-                        <div id="brandLegend" class="mt-3">
-                            <!-- Dynamic legend -->
-                        </div>
-                    </div>
+            <!-- AC Types Chart -->
+            <div class="chart-section">
+                <div class="chart-header">
+                    <h3 class="chart-title">Distribusi Type AC</h3>
+                </div>
+                <div class="chart-container ac-types-chart">
+                    <canvas id="acTypesChart"></canvas>
+                </div>
+                <div class="chart-legend" id="acTypesLegend"></div>
+            </div>
 
-                    <!-- Monthly Revenue -->
-                    <div class="chart-container">
-                        <div class="chart-title">
-                            <i class="bi bi-bar-chart-fill" style="color: var(--success);"></i>
-                            Pendapatan Bulanan
-                        </div>
-                        <div class="chart-canvas">
-                            <canvas id="revenueChart"></canvas>
-                        </div>
-                        <div class="mt-3 p-3 rounded-3" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span style="font-weight: 600;">Total Revenue:</span>
-                                <span class="payment-amount" id="totalRevenue">Rp 0</span>
-                            </div>
-                        </div>
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <div class="action-card" onclick="openModal()">
+                    <div class="action-icon">➕</div>
+                    <div class="action-content">
+                        <h3>Tambah Customer</h3>
+                        <p>Customer baru</p>
                     </div>
                 </div>
-
-                <!-- Customers Tab -->
-                <div class="tab-pane fade" id="customers">
-                    <!-- Search and Filter -->
-                    <div class="search-container">
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <div class="position-relative">
-                                    <i class="bi bi-search position-absolute" style="left: 20px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
-                                    <input type="text" class="form-control-modern ps-5" id="searchInput" placeholder="Cari customer...">
-                                </div>
-                            </div>
-                            <div class="col-8">
-                                <select class="form-control-modern" id="statusFilter">
-                                    <option value="">Semua Status</option>
-                                    <option value="completed">Selesai</option>
-                                    <option value="in_progress">Sedang Dikerjakan</option>
-                                    <option value="pending">Pending</option>
-                                </select>
-                            </div>
-                            <div class="col-4">
-                                <button class="btn btn-modern btn-primary-modern w-100" onclick="exportData()">
-                                    <i class="bi bi-download"></i>
-                                </button>
-                            </div>
-                        </div>
+                <div class="action-card" onclick="exportData()">
+                    <div class="action-icon">📊</div>
+                    <div class="action-content">
+                        <h3>Export Data</h3>
+                        <p>Download CSV</p>
                     </div>
-
-                    <!-- Customer List -->
-                    <div id="customerList">
-                        <!-- Dynamic content -->
+                </div>
+                <div class="action-card" onclick="syncData()">
+                    <div class="action-icon">🔄</div>
+                    <div class="action-content">
+                        <h3>Sync Data</h3>
+                        <p>Refresh database</p>
                     </div>
-
-                    <!-- No Results -->
-                    <div id="noResults" class="text-center p-5" style="display: none;">
-                        <i class="bi bi-search" style="font-size: 3rem; color: #6c757d; opacity: 0.5;"></i>
-                        <h5 class="text-muted mt-3">Tidak ada customer ditemukan</h5>
-                        <p class="text-muted">Coba ubah kata kunci pencarian</p>
+                </div>
+                <div class="action-card" onclick="showAnalytics()">
+                    <div class="action-icon">📈</div>
+                    <div class="action-content">
+                        <h3>Analytics</h3>
+                        <p>Lihat laporan</p>
                     </div>
                 </div>
             </div>
+
+            <!-- Customer List -->
+            <div class="customer-list">
+                <div class="list-header">
+                    <h3 class="list-title">Customer Terbaru</h3>
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Cari customer..." onkeyup="filterCustomers()">
+                        <span class="search-icon">🔍</span>
+                    </div>
+                </div>
+                <div id="customerListContent">
+                    <div class="loading show">
+                        <div class="spinner"></div>
+                        <p>Loading customer data...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Spacer for bottom nav -->
+            <div style="height: 100px;"></div>
         </div>
 
-        <!-- Floating Action Button -->
-        <div class="position-fixed" style="bottom: 30px; right: 30px; z-index: 1000;">
-            <!-- Main FAB -->
-            <button class="fab mb-2" onclick="addCustomer()">
-                <i class="bi bi-plus-lg"></i>
-            </button>
-            
-            <!-- Debug FABs -->
-            <div class="d-flex flex-column gap-2">
-                <button class="btn btn-sm btn-warning rounded-circle" 
-                        style="width: 45px; height: 45px;" 
-                        onclick="checkFirestoreAccess()" 
-                        title="Check Firestore Access">
-                    <i class="bi bi-shield-check"></i>
-                </button>
-                
-                <button class="btn btn-sm btn-info rounded-circle" 
-                        style="width: 45px; height: 45px;" 
-                        onclick="addSampleData()" 
-                        title="Add Sample Data">
-                    <i class="bi bi-database-add"></i>
-                </button>
-                
-                <button class="btn btn-sm btn-success rounded-circle" 
-                        style="width: 45px; height: 45px;" 
-                        onclick="loadData()" 
-                        title="Reload Data">
-                    <i class="bi bi-arrow-clockwise"></i>
-                </button>
-            </div>
+        <!-- FAB -->
+        <button class="fab" onclick="openModal()">➕</button>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <a href="#" class="nav-item active">
+                <div class="nav-icon">🏠</div>
+                <div class="nav-label">Dashboard</div>
+            </a>
+            <a href="#" class="nav-item">
+                <div class="nav-icon">👥</div>
+                <div class="nav-label">Customers</div>
+            </a>
+            <a href="#" class="nav-item">
+                <div class="nav-icon">📊</div>
+                <div class="nav-label">Reports</div>
+            </a>
+            <a href="#" class="nav-item">
+                <div class="nav-icon">⚙️</div>
+                <div class="nav-label">Settings</div>
+            </a>
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <!-- Modal -->
+    <div id="customerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Tambah Customer Baru</h2>
+            </div>
+            <form id="customerForm">
+                <div class="form-group">
+                    <label class="form-label" for="customerName">Nama Customer</label>
+                    <input type="text" class="form-input" id="customerName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="customerPhone">No. Telepon</label>
+                    <input type="tel" class="form-input" id="customerPhone" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="customerAddress">Alamat</label>
+                    <input type="text" class="form-input" id="customerAddress" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="acCount">Jumlah AC</label>
+                    <input type="number" class="form-input" id="acCount" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="acBrand">Brand AC</label>
+                    <select class="form-input" id="acBrand" required>
+                        <option value="">Pilih Brand</option>
+                        <option value="Daikin">Daikin</option>
+                        <option value="LG">LG</option>
+                        <option value="Samsung">Samsung</option>
+                        <option value="Panasonic">Panasonic</option>
+                        <option value="Sharp">Sharp</option>
+                        <option value="Mitsubishi">Mitsubishi</option>
+                        <option value="Gree">Gree</option>
+                        <option value="York">York</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="serviceDate">Tanggal Service</label>
+                    <input type="date" class="form-input" id="serviceDate" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="technician">Teknisi</label>
+                    <input type="text" class="form-input" id="technician" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="payment">Payment (Rp)</label>
+                    <input type="number" class="form-input" id="payment" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="notes">Keterangan</label>
+                    <input type="text" class="form-input" id="notes" placeholder="Opsional">
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Batal</button>
+                <button type="submit" class="btn btn-primary">💾 Simpan Data</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
     <script>
-        // Global variables
-        let customers = [];
-        let charts = {};
-        let isFirebaseConnected = false;
+        // Sample data untuk demo
+        let customers = [
+            {
+                id: 1,
+                name: "Budi Santoso",
+                phone: "08123456789",
+                address: "Jl. Merdeka No. 123, Makassar",
+                acCount: 2,
+                acBrand: "Daikin",
+                serviceDate: "2024-12-15",
+                technician: "Rizki",
+                payment: 250000,
+                notes: "Service rutin bulanan"
+            },
+            {
+                id: 3,
+                name: "Andi Wijaya",
+                phone: "08345678901",
+                address: "Jl. Veteran No. 67, Makassar",
+                acCount: 3,
+                acBrand: "Samsung",
+                serviceDate: "2024-12-08",
+                technician: "Budi",
+                payment: 500000,
+                notes: "Cleaning kompressor dan ganti freon"
+            },
+            {
+                id: 4,
+                name: "Maya Sari",
+                phone: "08456789012",
+                address: "Jl. Diponegoro No. 89, Makassar",
+                acCount: 1,
+                acBrand: "Panasonic",
+                serviceDate: "2024-12-05",
+                technician: "Ahmad",
+                payment: 180000,
+                notes: "Pembersihan evaporator"
+            },
+            {
+                id: 5,
+                name: "Wahyu Pratama",
+                phone: "08567890123",
+                address: "Jl. Ahmad Yani No. 234, Makassar",
+                acCount: 2,
+                acBrand: "Sharp",
+                serviceDate: "2024-11-28",
+                technician: "Rizki",
+                payment: 320000,
+                notes: "Perbaikan indoor unit"
+            }
+        ];
+
+        let revenueChart, acTypesChart;
+        let editingIndex = -1;
 
         // Initialize app
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Initializing app...');
-            setTimeout(() => {
-                loadData();
-            }, 2000);
-        });
-
-        // Load data from Firestore
-        async function loadData() {
-            console.log('🔥 Starting to load data from Firebase...');
-            
-            try {
-                // Test Firebase connection first
-                console.log('🔗 Testing Firebase connection...');
-                
-                // Try to get data from Firestore
-                const snapshot = await db.collection('customers').get();
-                console.log('📊 Firestore query executed, snapshot size:', snapshot.size);
-                
-                customers = [];
-                
-                if (snapshot.empty) {
-                    console.log('📭 No documents found in customers collection');
-                    console.log('🎭 Using mock data as fallback');
-                    customers = getMockData();
-                    isFirebaseConnected = false;
-                    updateFirebaseStatus(false, 'No data in Firestore');
-                } else {
-                    console.log('📚 Found documents, processing...');
-                    snapshot.forEach((doc) => {
-                        const data = doc.data();
-                        console.log(`📄 Document ${doc.id}:`, data);
-                        customers.push({ id: doc.id, ...data });
-                    });
-                    
-                    console.log('✅ Successfully loaded', customers.length, 'customers from Firebase');
-                    isFirebaseConnected = true;
-                    updateFirebaseStatus(true, 'Connected to Firestore');
-                    
-                    // Setup real-time listener
-                    setupRealtimeListener();
-                }
-                
-            } catch (error) {
-                console.error('❌ Firebase error:', error);
-                console.log('🎭 Falling back to mock data');
-                customers = getMockData();
-                isFirebaseConnected = false;
-                updateFirebaseStatus(false, `Error: ${error.message}`);
-            }
-            
-            console.log('📊 Final customers data:', customers);
-            updateUI();
-            hideLoading();
-        }
-
-        // Setup real-time listener
-        function setupRealtimeListener() {
-            try {
-                console.log('👂 Setting up real-time listener...');
-                db.collection('customers').onSnapshot((snapshot) => {
-                    console.log('🔄 Real-time update received, size:', snapshot.size);
-                    customers = [];
-                    snapshot.forEach((doc) => {
-                        customers.push({ id: doc.id, ...doc.data() });
-                    });
-                    console.log('🔄 Updated customers:', customers.length);
-                    updateUI();
-                }, (error) => {
-                    console.error('❌ Real-time listener error:', error);
-                });
-            } catch (error) {
-                console.error('❌ Failed to setup real-time listener:', error);
-            }
-        }
-
-        // Update Firebase status with more detail
-        function updateFirebaseStatus(connected, message) {
-            const statusElement = document.getElementById('firebaseStatus');
-            if (statusElement) {
-                statusElement.textContent = connected ? 'Firebase Connected' : 'Firebase Disconnected';
-                console.log('🔥 Firebase Status:', message);
-            }
-        }
-
-        // Add function to manually add sample data to Firestore
-        async function addSampleData() {
-            if (!isFirebaseConnected) {
-                alert('Firebase tidak terhubung!');
-                return;
-            }
-            
-            try {
-                const sampleData = getMockData();
-                console.log('📝 Adding sample data to Firestore...');
-                
-                for (const customer of sampleData) {
-                    const { id, ...customerData } = customer;
-                    await db.collection('customers').doc(id).set(customerData);
-                    console.log(`✅ Added customer: ${customer.name}`);
-                }
-                
-                alert('Sample data berhasil ditambahkan ke Firestore!');
-                loadData(); // Reload data
-            } catch (error) {
-                console.error('❌ Error adding sample data:', error);
-                alert('Error menambahkan data: ' + error.message);
-            }
-        }
-
-        // Add button to check Firestore rules
-        async function checkFirestoreAccess() {
-            try {
-                console.log('🔐 Checking Firestore access...');
-                
-                // Try to read
-                const testRead = await db.collection('customers').limit(1).get();
-                console.log('✅ Read access: OK');
-                
-                // Try to write (test document)
-                await db.collection('test').doc('access-test').set({
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    test: true
-                });
-                console.log('✅ Write access: OK');
-                
-                // Clean up test document
-                await db.collection('test').doc('access-test').delete();
-                console.log('✅ Delete access: OK');
-                
-                alert('Firestore access: ✅ ALL OK\n\nRead: ✅\nWrite: ✅\nDelete: ✅');
-                
-            } catch (error) {
-                console.error('❌ Firestore access error:', error);
-                
-                let errorMessage = 'Firestore Access Error:\n\n';
-                if (error.code === 'permission-denied') {
-                    errorMessage += '🔒 Permission Denied\n';
-                    errorMessage += 'Firestore rules mungkin terlalu ketat.\n\n';
-                    errorMessage += 'Coba atur rules menjadi:\n';
-                    errorMessage += 'allow read, write: if true;';
-                } else {
-                    errorMessage += error.message;
-                }
-                
-                alert(errorMessage);
-            }
-        }
-
-        // Mock data dengan struktur yang sesuai Firestore
-        function getMockData() {
-            return [
-                {
-                    id: "1",
-                    name: "BINTANG",
-                    address: "CASTANEA CROSS NO 50",
-                    phone: "0853-4295-7709",
-                    acBrand: "Lainnya",
-                    acCount: 1,
-                    acUnits: [
-                        {
-                            brand: "Lainnya",
-                            type: "Split Wall",
-                            pk: "1 PK",
-                            condition: "Baik",
-                            freon: "R410A",
-                            location: "KAMAR"
-                        }
-                    ],
-                    serviceDate: "2025-06-14",
-                    technician: "SATRIA DAN DIMAS",
-                    payment: 500000,
-                    notes: "CUCI AC",
-                    createdAt: new Date("2025-06-28T19:07:39+08:00"),
-                    updatedAt: new Date("2025-06-28T22:36:51+08:00")
-                },
-                {
-                    id: "2",
-                    name: "ADNAN PRATAMA",
-                    address: "PATRA RESIDENCE BLOK F NO 26",
-                    phone: "081234567890",
-                    acBrand: "Samsung",
-                    acCount: 2,
-                    acUnits: [
-                        {
-                            brand: "Samsung",
-                            type: "Split Wall",
-                            pk: "1 PK",
-                            condition: "Baik",
-                            freon: "R410A",
-                            location: "KAMAR UTAMA"
-                        },
-                        {
-                            brand: "Samsung",
-                            type: "Split Wall",
-                            pk: "1 PK",
-                            condition: "Baik",
-                            freon: "R410A",
-                            location: "KAMAR TAMU"
-                        }
-                    ],
-                    serviceDate: "2025-07-04",
-                    technician: "AGUS DAN PUTRA",
-                    payment: 160000,
-                    notes: "SERVICE RUTIN",
-                    createdAt: new Date("2025-07-01T10:00:00+08:00"),
-                    updatedAt: new Date("2025-07-04T15:30:00+08:00")
-                },
-                {
-                    id: "3",
-                    name: "HASNAWATI",
-                    address: "JLN. TERONG 63. SEKAT ALMARKAS JL. MESJID RAYA",
-                    phone: "085242811957",
-                    acBrand: "Daikin",
-                    acCount: 1,
-                    acUnits: [
-                        {
-                            brand: "Daikin",
-                            type: "Split Wall",
-                            pk: "0.5 PK",
-                            condition: "Baik",
-                            freon: "R32",
-                            location: "KAMAR"
-                        }
-                    ],
-                    serviceDate: "2025-07-04",
-                    technician: "AGUS DAN PUTRA",
-                    payment: 80000,
-                    notes: "PEMBERSIHAN AC",
-                    createdAt: new Date("2025-07-02T14:20:00+08:00"),
-                    updatedAt: new Date("2025-07-04T16:45:00+08:00")
-                },
-                {
-                    id: "4",
-                    name: "BUDI SANTOSO",
-                    address: "JLN. MAWAR NO. 15",
-                    phone: "081234567890",
-                    acBrand: "LG",
-                    acCount: 1,
-                    acUnits: [
-                        {
-                            brand: "LG",
-                            type: "Split Wall",
-                            pk: "1.5 PK",
-                            condition: "Baik",
-                            freon: "R32",
-                            location: "RUANG TAMU"
-                        }
-                    ],
-                    serviceDate: "2025-06-15",
-                    technician: "AGUS DAN PUTRA",
-                    payment: 200000,
-                    notes: "CUCI AC + TAMBAH FREON",
-                    createdAt: new Date("2025-06-10T09:15:00+08:00"),
-                    updatedAt: new Date("2025-06-15T11:30:00+08:00")
-                },
-                {
-                    id: "5",
-                    name: "SARI DEWI",
-                    address: "KOMPLEK GRAHA INDAH BLOK C12",
-                    phone: "082345678901",
-                    acBrand: "Panasonic",
-                    acCount: 2,
-                    acUnits: [
-                        {
-                            brand: "Panasonic",
-                            type: "Split Wall",
-                            pk: "1 PK",
-                            condition: "Baik",
-                            freon: "R410A",
-                            location: "KAMAR UTAMA"
-                        },
-                        {
-                            brand: "Samsung",
-                            type: "Split Wall",
-                            pk: "0.5 PK",
-                            condition: "Baik",
-                            freon: "R32",
-                            location: "KAMAR ANAK"
-                        }
-                    ],
-                    serviceDate: "2025-05-20",
-                    technician: "SATRIA DAN WAHYU",
-                    payment: 180000,
-                    notes: "SERVICE BERKALA",
-                    createdAt: new Date("2025-05-15T13:45:00+08:00"),
-                    updatedAt: new Date("2025-05-20T16:20:00+08:00")
-                }
-            ];
-        }
-
-        // Update UI
-        function updateUI() {
+        window.onload = function() {
+            document.getElementById('serviceDate').value = new Date().toISOString().split('T')[0];
             updateStats();
-            updateCharts();
-            updateCustomerList();
-            updateRecentActivities();
-        }
+            renderCustomerList();
+            initCharts();
+        };
 
-        // Update statistics sesuai struktur data baru
+        // Update statistics
         function updateStats() {
-            const totalCustomers = customers.length;
-            const totalACUnits = customers.reduce((sum, customer) => 
-                sum + (customer.acCount || (customer.acUnits ? customer.acUnits.length : 0)), 0);
-            const totalPayments = customers.reduce((sum, customer) => sum + (customer.payment || 0), 0);
+            document.getElementById('totalCustomers').textContent = customers.length;
             
-            // Hitung services bulan ini berdasarkan serviceDate
-            const currentMonth = new Date().getMonth() + 1; // Juli = 7
+            const totalAC = customers.reduce((sum, customer) => sum + (customer.acCount || 0), 0);
+            document.getElementById('totalAC').textContent = totalAC;
+            
+            const totalPayment = customers.reduce((sum, customer) => sum + (customer.payment || 0), 0);
+            document.getElementById('totalPayment').textContent = formatCurrency(totalPayment);
+            
+            const currentMonth = new Date().getMonth();
             const currentYear = new Date().getFullYear();
-            const servicesThisMonth = customers.filter(c => {
-                if (!c.serviceDate) return false;
-                const serviceDate = new Date(c.serviceDate);
-                return serviceDate.getMonth() + 1 === currentMonth && serviceDate.getFullYear() === currentYear;
+            const recentService = customers.filter(customer => {
+                if (!customer.serviceDate) return false;
+                const serviceDate = new Date(customer.serviceDate);
+                return serviceDate.getMonth() === currentMonth && serviceDate.getFullYear() === currentYear;
             }).length;
-            
-            const avgPayment = totalCustomers > 0 ? totalPayments / totalCustomers : 0;
-            
-            // Status berdasarkan tanggal service (jika hari ini atau kemarin = active)
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            
-            const activeServices = customers.filter(c => {
-                if (!c.serviceDate) return false;
-                const serviceDate = new Date(c.serviceDate);
-                return serviceDate >= yesterday;
-            }).length;
-
-            // Animate numbers
-            animateValue('totalCustomers', 0, totalCustomers, 1000);
-            animateValue('totalACUnits', 0, totalACUnits, 1200);
-            animateValue('servicesThisMonth', 0, servicesThisMonth, 800);
-            
-            document.getElementById('totalPayments').textContent = formatCurrency(totalPayments);
-            document.getElementById('avgPayment').textContent = formatCurrency(avgPayment);
-            document.getElementById('activeServices').textContent = activeServices;
+            document.getElementById('recentService').textContent = recentService;
         }
 
-        // Animate number values
-        function animateValue(id, start, end, duration) {
-            const element = document.getElementById(id);
-            if (!element) return;
-            
-            const range = end - start;
-            const increment = range / (duration / 50);
-            let current = start;
-            
-            const timer = setInterval(() => {
-                current += increment;
-                if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
-                    current = end;
-                    clearInterval(timer);
-                }
-                element.textContent = Math.floor(current);
-            }, 50);
+        // Initialize charts
+        function initCharts() {
+            initRevenueChart();
+            initACTypesChart();
         }
 
-        // Update charts
-        function updateCharts() {
-            updateBrandChart();
-            updateRevenueChart();
-            updateMiniChart();
-        }
-
-        // Brand distribution chart
-        function updateBrandChart() {
-            const brandCounts = {};
-            customers.forEach(customer => {
-                if (customer.acUnits) {
-                    customer.acUnits.forEach(unit => {
-                        brandCounts[unit.brand] = (brandCounts[unit.brand] || 0) + 1;
-                    });
-                }
-            });
-
-            const labels = Object.keys(brandCounts);
-            const data = Object.values(brandCounts);
-            const colors = ['#FF6B35', '#4A90E2', '#27AE60', '#F39C12', '#9B59B6', '#E74C3C'];
-
-            if (charts.brandChart) {
-                charts.brandChart.destroy();
-            }
-
-            const ctx = document.getElementById('brandChart');
-            if (!ctx) return;
-
-            charts.brandChart = new Chart(ctx, {
-                type: 'doughnut',
+        // Initialize revenue chart
+        function initRevenueChart() {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            
+            // Generate sample monthly data
+            const months = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            const revenueData = [2500000, 3200000, 2800000, 3500000, 4100000, 3800000];
+            
+            revenueChart = new Chart(ctx, {
+                type: 'line',
                 data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: colors,
-                        borderWidth: 0,
-                        hoverOffset: 15
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((context.parsed * 100) / total).toFixed(1);
-                                    return `${context.label}: ${context.parsed} unit (${percentage}%)`;
-                                }
-                            }
-                        }
-                    },
-                    cutout: '65%'
-                }
-            });
-
-            // Update legend
-            const legendHTML = labels.map((label, index) => `
-                <div class="d-flex align-items-center justify-content-between p-2 rounded mb-2" style="background: rgba(${hexToRgb(colors[index])}, 0.1);">
-                    <div class="d-flex align-items-center">
-                        <div class="rounded-circle me-2" style="width: 12px; height: 12px; background-color: ${colors[index]};"></div>
-                        <small class="fw-semibold">${label}</small>
-                    </div>
-                    <small class="text-muted">${data[index]} unit</small>
-                </div>
-            `).join('');
-            
-            const legendElement = document.getElementById('brandLegend');
-            if (legendElement) {
-                legendElement.innerHTML = legendHTML;
-            }
-        }
-
-        // Revenue chart berdasarkan serviceDate
-        function updateRevenueChart() {
-            const monthlyRevenue = {};
-            
-            customers.forEach(customer => {
-                if (customer.serviceDate) {
-                    const date = new Date(customer.serviceDate);
-                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 
-                                       'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-                    const monthKey = monthNames[date.getMonth()] + ' ' + date.getFullYear();
-                    monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + (customer.payment || 0);
-                }
-            });
-
-            // Sort by date
-            const sortedEntries = Object.entries(monthlyRevenue).sort((a, b) => {
-                const dateA = new Date(a[0]);
-                const dateB = new Date(b[0]);
-                return dateA - dateB;
-            });
-
-            const labels = sortedEntries.map(([month]) => month);
-            const data = sortedEntries.map(([, revenue]) => revenue);
-            const totalRevenue = data.reduce((a, b) => a + b, 0);
-
-            if (charts.revenueChart) {
-                charts.revenueChart.destroy();
-            }
-
-            const ctx = document.getElementById('revenueChart');
-            if (!ctx) return;
-
-            charts.revenueChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
+                    labels: months,
                     datasets: [{
                         label: 'Revenue',
-                        data: data,
-                        backgroundColor: '#FF6B35',
-                        borderRadius: 10,
-                        borderSkipped: false,
+                        data: revenueData,
+                        borderColor: '#FF5722',
+                        backgroundColor: 'rgba(255, 87, 34, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#FF5722',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 3,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `Revenue: ${formatCurrency(context.parsed.y)}`;
-                                }
-                            }
+                        legend: {
+                            display: false
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            },
                             ticks: {
                                 callback: function(value) {
-                                    return 'Rp ' + (value / 1000) + 'k';
-                                }
+                                    return 'Rp ' + (value / 1000000).toFixed(1) + 'M';
+                                },
+                                font: {
+                                    size: 11
+                                },
+                                color: '#64748b'
                             }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                },
+                                color: '#64748b'
+                            }
+                        }
+                    },
+                    elements: {
+                        point: {
+                            hoverBorderWidth: 4
                         }
                     }
                 }
             });
-
-            const totalRevenueElement = document.getElementById('totalRevenue');
-            if (totalRevenueElement) {
-                totalRevenueElement.textContent = formatCurrency(totalRevenue);
-            }
         }
 
-        // Mini chart untuk dashboard
-        function updateMiniChart() {
-            const monthlyRevenue = {};
+        // Initialize AC types chart
+        function initACTypesChart() {
+            const ctx = document.getElementById('acTypesChart').getContext('2d');
             
+            // Count AC brands from customers data
+            const brandCounts = {};
             customers.forEach(customer => {
-                if (customer.serviceDate) {
-                    const date = new Date(customer.serviceDate);
-                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 
-                                       'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-                    const monthKey = monthNames[date.getMonth()] + ' ' + date.getFullYear();
-                    monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + (customer.payment || 0);
-                }
+                const brand = customer.acBrand || 'Unknown';
+                brandCounts[brand] = (brandCounts[brand] || 0) + customer.acCount;
             });
 
-            // Sort dan ambil 4 bulan terakhir
-            const sortedEntries = Object.entries(monthlyRevenue).sort((a, b) => {
-                const dateA = new Date(a[0]);
-                const dateB = new Date(b[0]);
-                return dateA - dateB;
-            }).slice(-4);
+            const labels = Object.keys(brandCounts);
+            const data = Object.values(brandCounts);
+            
+            // Color palette
+            const colors = [
+                '#FF5722', '#2196F3', '#4CAF50', '#FF9800', 
+                '#9C27B0', '#607D8B', '#795548', '#E91E63'
+            ];
 
-            const labels = sortedEntries.map(([month]) => month);
-            const data = sortedEntries.map(([, revenue]) => revenue);
-
-            if (charts.miniChart) {
-                charts.miniChart.destroy();
-            }
-
-            const ctx = document.getElementById('miniChart');
-            if (!ctx) return;
-
-            charts.miniChart = new Chart(ctx, {
-                type: 'line',
+            acTypesChart = new Chart(ctx, {
+                type: 'doughnut',
                 data: {
                     labels: labels,
                     datasets: [{
                         data: data,
-                        borderColor: '#FF6B35',
-                        backgroundColor: 'rgba(255, 107, 53, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointBackgroundColor: '#FF6B35',
-                        pointBorderColor: '#ffffff',
-                        pointBorderWidth: 2,
-                        pointRadius: 6
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 0,
+                        hoverBorderWidth: 3,
+                        hoverBorderColor: '#fff'
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `Revenue: ${formatCurrency(context.parsed.y)}`;
-                                }
-                            }
+                        legend: {
+                            display: false
                         }
                     },
-                    scales: {
-                        x: { display: true },
-                        y: { 
-                            display: false,
-                            beginAtZero: true 
+                    cutout: '65%',
+                    elements: {
+                        arc: {
+                            borderWidth: 0
                         }
                     }
                 }
             });
+
+            // Generate custom legend
+            generateACTypesLegend(labels, colors, data);
         }
 
-        // Update customer list
-        function updateCustomerList() {
-            const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
-            const statusFilter = document.getElementById('statusFilter')?.value || '';
+        // Generate custom legend for AC types chart
+        function generateACTypesLegend(labels, colors, data) {
+            const legendContainer = document.getElementById('acTypesLegend');
+            legendContainer.innerHTML = '';
 
-            const filteredCustomers = customers.filter(customer => {
-                const matchesSearch = customer.name.toLowerCase().includes(searchTerm) ||
-                                    customer.address.toLowerCase().includes(searchTerm) ||
-                                    customer.phone.includes(searchTerm);
+            labels.forEach((label, index) => {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'legend-item';
                 
-                const matchesFilter = !statusFilter || customer.status === statusFilter;
+                legendItem.innerHTML = `
+                    <div class="legend-color" style="background-color: ${colors[index]}"></div>
+                    <span>${label} (${data[index]})</span>
+                `;
                 
-                return matchesSearch && matchesFilter;
+                legendContainer.appendChild(legendItem);
+            });
+        }
+
+        // Switch chart view
+        function switchChart(type) {
+            // Update toggle buttons
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update chart data based on type
+            if (type === 'yearly') {
+                const yearlyData = [28000000, 35000000, 42000000]; // Sample yearly data
+                const yearlyLabels = ['2022', '2023', '2024'];
+                
+                revenueChart.data.labels = yearlyLabels;
+                revenueChart.data.datasets[0].data = yearlyData;
+            } else {
+                const monthlyData = [2500000, 3200000, 2800000, 3500000, 4100000, 3800000];
+                const monthlyLabels = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                
+                revenueChart.data.labels = monthlyLabels;
+                revenueChart.data.datasets[0].data = monthlyData;
+            }
+            
+            revenueChart.update('active');
+        }
+
+        // Render customer list
+        function renderCustomerList(dataToRender = customers) {
+            const container = document.getElementById('customerListContent');
+            
+            if (dataToRender.length === 0) {
+                container.innerHTML = `
+                    <div class="no-data">
+                        <div class="no-data-icon">👥</div>
+                        <h3>Tidak ada customer</h3>
+                        <p>Belum ada data customer yang tersimpan</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = dataToRender.slice(0, 10).map((customer, index) => `
+                <div class="customer-item" onclick="editCustomer(${customers.indexOf(customer)})">
+                    <div class="customer-header">
+                        <div class="customer-name">${customer.name}</div>
+                        <div class="customer-badge">${customer.acCount} AC</div>
+                    </div>
+                    <div class="customer-details">
+                        <div class="customer-detail">
+                            📍 ${customer.address}
+                        </div>
+                        <div class="customer-detail">
+                            📞 ${customer.phone}
+                        </div>
+                        <div class="customer-detail">
+                            ❄️ ${customer.acBrand} • 🔧 ${customer.technician}
+                        </div>
+                        <div class="customer-detail">
+                            📅 ${formatDate(customer.serviceDate)} • 💰 ${formatCurrency(customer.payment)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Filter customers
+        function filterCustomers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filteredCustomers = customers.filter(customer => 
+                customer.name?.toLowerCase().includes(searchTerm) ||
+                customer.address?.toLowerCase().includes(searchTerm) ||
+                customer.phone?.includes(searchTerm) ||
+                customer.technician?.toLowerCase().includes(searchTerm)
+            );
+            
+            renderCustomerList(filteredCustomers);
+        }
+
+        // Open modal
+        function openModal(index = -1) {
+            const modal = document.getElementById('customerModal');
+            const modalTitle = document.getElementById('modalTitle');
+            
+            editingIndex = index;
+            
+            if (index >= 0) {
+                modalTitle.textContent = 'Edit Customer';
+                const customer = customers[index];
+                
+                document.getElementById('customerName').value = customer.name || '';
+                document.getElementById('customerPhone').value = customer.phone || '';
+                document.getElementById('customerAddress').value = customer.address || '';
+                document.getElementById('acCount').value = customer.acCount || '';
+                document.getElementById('acBrand').value = customer.acBrand || '';
+                document.getElementById('serviceDate').value = customer.serviceDate || '';
+                document.getElementById('technician').value = customer.technician || '';
+                document.getElementById('payment').value = customer.payment || '';
+                document.getElementById('notes').value = customer.notes || '';
+            } else {
+                modalTitle.textContent = 'Tambah Customer Baru';
+                document.getElementById('customerForm').reset();
+                document.getElementById('serviceDate').value = new Date().toISOString().split('T')[0];
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('customerModal').style.display = 'none';
+            editingIndex = -1;
+        }
+
+        // Edit customer
+        function editCustomer(index) {
+            openModal(index);
+        }
+
+        // Form submission
+        document.getElementById('customerForm').onsubmit = function(e) {
+            e.preventDefault();
+            
+            const customerData = {
+                name: document.getElementById('customerName').value,
+                phone: document.getElementById('customerPhone').value,
+                address: document.getElementById('customerAddress').value,
+                acCount: parseInt(document.getElementById('acCount').value),
+                acBrand: document.getElementById('acBrand').value,
+                serviceDate: document.getElementById('serviceDate').value,
+                technician: document.getElementById('technician').value,
+                payment: parseInt(document.getElementById('payment').value),
+                notes: document.getElementById('notes').value
+            };
+            
+            if (editingIndex >= 0) {
+                customers[editingIndex] = { ...customers[editingIndex], ...customerData };
+                showToast('Customer berhasil diperbarui!');
+            } else {
+                customerData.id = Date.now();
+                customers.unshift(customerData);
+                showToast('Customer berhasil ditambahkan!');
+            }
+            
+            updateStats();
+            renderCustomerList();
+            updateCharts();
+            closeModal();
+        };
+
+        // Update charts after data changes
+        function updateCharts() {
+            // Update AC types chart
+            const brandCounts = {};
+            customers.forEach(customer => {
+                const brand = customer.acBrand || 'Unknown';
+                brandCounts[brand] = (brandCounts[brand] || 0) + customer.acCount;
             });
 
-            const customerListHTML = filteredCustomers.map((customer, index) => `
-                <div class="customer-card fade-in" style="animation-delay: ${index * 0.1}s;">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div class="flex-grow-1">
-                            <div class="customer-name">${customer.name}</div>
-                            <div class="customer-info">
-                                <i class="bi bi-geo-alt-fill"></i>
-                                ${customer.address}
-                            </div>
-                            ${customer.phone ? `
-                                <div class="customer-info">
-                                    <i class="bi bi-telephone-fill"></i>
-                                    ${customer.phone}
-                                </div>
-                            ` : ''}
-                        </div>
-                        <span class="status-badge status-${customer.status}">
-                            ${getStatusText(customer.status)}
-                        </span>
-                    </div>
+            const labels = Object.keys(brandCounts);
+            const data = Object.values(brandCounts);
+            const colors = [
+                '#FF5722', '#2196F3', '#4CAF50', '#FF9800', 
+                '#9C27B0', '#607D8B', '#795548', '#E91E63'
+            ];
 
-                    <!-- AC Units -->
-                    <div class="ac-units-container">
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="bi bi-wind me-2" style="color: var(--secondary);"></i>
-                            <span style="font-weight: 600; color: var(--dark);">
-                                ${customer.acUnits ? customer.acUnits.length : 0} Unit AC
-                            </span>
-                        </div>
-                        ${customer.acUnits ? customer.acUnits.map((unit, index) => `
-                            <div class="ac-unit">
-                                <strong>AC ${index + 1}:</strong> ${unit.brand} ${unit.model}<br>
-                                <small class="text-muted">Freon: ${unit.freon} • Lokasi: ${unit.location}</small>
-                            </div>
-                        `).join('') : '<div class="ac-unit">Tidak ada data AC</div>'}
-                    </div>
+            acTypesChart.data.labels = labels;
+            acTypesChart.data.datasets[0].data = data;
+            acTypesChart.data.datasets[0].backgroundColor = colors.slice(0, labels.length);
+            acTypesChart.update();
 
-                    <!-- Service Info -->
-                    <div class="service-info">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-calendar-check me-2" style="color: var(--success);"></i>
-                            <small>${customer.lastService || 'Belum ada service'}</small>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-tools me-2" style="color: var(--warning);"></i>
-                            <small>${customer.technician || 'Belum ditentukan'}</small>
-                        </div>
-                    </div>
-
-                    <div style="border-top: 1px solid #e9ecef; padding-top: 15px; margin-top: 15px;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span style="color: #6c757d; font-weight: 600;">Payment:</span>
-                            <span class="payment-amount">${formatCurrency(customer.payment || 0)}</span>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-
-            const customerListElement = document.getElementById('customerList');
-            const noResultsElement = document.getElementById('noResults');
-            
-            if (filteredCustomers.length === 0) {
-                if (customerListElement) customerListElement.innerHTML = '';
-                if (noResultsElement) noResultsElement.style.display = 'block';
-            } else {
-                if (customerListElement) customerListElement.innerHTML = customerListHTML;
-                if (noResultsElement) noResultsElement.style.display = 'none';
-            }
+            generateACTypesLegend(labels, colors, data);
         }
 
-        // Update recent activities
-        function updateRecentActivities() {
-            const recentCustomers = customers.slice(0, 3);
-            const activitiesHTML = recentCustomers.map((customer, index) => `
-                <div class="d-flex align-items-center p-3 mb-2 rounded-3" 
-                     style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); animation-delay: ${index * 0.1}s;" 
-                     class="fade-in">
-                    <div class="me-3" style="width: 50px; height: 50px; border-radius: 15px; background: var(--gradient-orange); color: white; display: flex; align-items: center; justify-content: center;">
-                        <i class="bi bi-tools"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div style="font-weight: 700; color: var(--dark);">${customer.name}</div>
-                        <small style="color: #6c757d;">Service • ${customer.lastService || 'Belum ada service'}</small>
-                    </div>
-                    <div class="text-end">
-                        <div class="payment-amount" style="font-size: 16px;">${formatCurrency(customer.payment || 0)}</div>
-                        <small style="color: #6c757d;">${customer.technician || 'TBD'}</small>
-                    </div>
-                </div>
-            `).join('');
-
-            const recentActivitiesElement = document.getElementById('recentActivities');
-            if (recentActivitiesElement) {
-                recentActivitiesElement.innerHTML = activitiesHTML || '<p class="text-muted text-center">Belum ada aktivitas</p>';
-            }
-        }
-
-        // Utility functions
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0
-            }).format(amount);
-        }
-
-        function getStatusText(status) {
-            switch(status) {
-                case 'completed': return 'Selesai';
-                case 'in_progress': return 'Sedang Dikerjakan';
-                case 'pending': return 'Pending';
-                default: return 'Unknown';
-            }
-        }
-
-        function hexToRgb(hex) {
-            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? 
-                `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : 
-                '0, 0, 0';
-        }
-
-        function hideLoading() {
-            const loadingScreen = document.getElementById('loadingScreen');
-            const app = document.getElementById('app');
-            
-            if (loadingScreen) {
-                loadingScreen.style.opacity = '0';
-                setTimeout(() => {
-                    loadingScreen.style.display = 'none';
-                    if (app) {
-                        app.style.display = 'block';
-                        app.classList.add('fade-in');
-                    }
-                }, 500);
-            }
-        }
-
+        // Export data
         function exportData() {
-            const csvContent = "data:text/csv;charset=utf-8," + 
-                "Name,Address,Phone,AC Units,Last Service,Technician,Payment,Status\n" +
-                customers.map(customer => 
-                    `"${customer.name}","${customer.address}","${customer.phone || ''}",${customer.acUnits ? customer.acUnits.length : 0},"${customer.lastService || ''}","${customer.technician || ''}",${customer.payment || 0},"${customer.status}"`
-                ).join("\n");
+            if (customers.length === 0) {
+                showToast('Tidak ada data untuk diekspor!', 'error');
+                return;
+            }
 
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "nala_aircon_customers.csv");
+            const headers = ['No', 'Nama', 'Telepon', 'Alamat', 'Jumlah AC', 'Brand AC', 'Tanggal Service', 'Teknisi', 'Payment', 'Keterangan'];
+            const csvContent = [
+                headers.join(','),
+                ...customers.map((customer, index) => [
+                    index + 1,
+                    `"${customer.name || ''}"`,
+                    customer.phone || '',
+                    `"${customer.address || ''}"`,
+                    customer.acCount || 0,
+                    customer.acBrand || '',
+                    customer.serviceDate || '',
+                    `"${customer.technician || ''}"`,
+                    customer.payment || 0,
+                    `"${customer.notes || ''}"`
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `nala-aircon-${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            
+            showToast('Data berhasil diekspor!');
         }
 
-        function addCustomer() {
-            // Show modal or redirect to add customer page
-            if (confirm('Apakah Anda ingin menambah customer baru?\n\nFitur ini akan segera tersedia!')) {
-                // Placeholder for add customer functionality
-                console.log('Add customer feature coming soon!');
-            }
+        // Sync data
+        function syncData() {
+            showToast('Data berhasil disinkronkan!');
+            updateStats();
+            renderCustomerList();
+            updateCharts();
         }
 
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // Search functionality
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput) {
-                searchInput.addEventListener('input', debounce(updateCustomerList, 300));
-            }
+        // Show analytics
+        function showAnalytics() {
+            showToast('Fitur analytics akan segera hadir!');
+        }
 
-            // Filter functionality
-            const statusFilter = document.getElementById('statusFilter');
-            if (statusFilter) {
-                statusFilter.addEventListener('change', updateCustomerList);
-            }
+        // Utility functions
+        function formatDate(dateString) {
+            if (!dateString) return 'Tidak diketahui';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('id-ID', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
 
-            // Tab change events
-            const tabLinks = document.querySelectorAll('[data-bs-toggle="pill"]');
-            tabLinks.forEach(link => {
-                link.addEventListener('shown.bs.tab', function() {
-                    // Refresh charts when switching to analytics tab
-                    if (this.getAttribute('href') === '#analytics') {
-                        setTimeout(() => {
-                            updateCharts();
-                        }, 300);
-                    }
-                });
+        function formatCurrency(amount) {
+            if (!amount) return 'Rp 0';
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 3000);
+        }
+
+        // Modal click outside to close
+        window.onclick = function(event) {
+            const modal = document.getElementById('customerModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        };
+
+        // Bottom navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+                
+                const label = this.querySelector('.nav-label').textContent;
+                if (label !== 'Dashboard') {
+                    showToast(`Navigasi ke ${label} akan segera tersedia!`);
+                }
             });
         });
 
-        // Debounce function for search
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
+        // Swipe gestures for mobile
+        let startX = 0;
+        let startY = 0;
+
+        document.addEventListener('touchstart', function(e) {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        });
+
+        document.addEventListener('touchend', function(e) {
+            if (!startX || !startY) return;
+
+            let endX = e.changedTouches[0].clientX;
+            let endY = e.changedTouches[0].clientY;
+
+            let diffX = startX - endX;
+            let diffY = startY - endY;
+
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                if (diffX > 0) {
+                    // Swipe left
+                } else {
+                    // Swipe right
+                }
+            }
+
+            startX = 0;
+            startY = 0;
+        });
+
+        // Add vibration feedback for mobile interactions
+        function vibrate(duration = 50) {
+            if (navigator.vibrate) {
+                navigator.vibrate(duration);
+            }
         }
 
-        // Auto refresh data every 30 seconds
-        setInterval(() => {
-            if (isFirebaseConnected) {
-                console.log('Auto refreshing data...');
-                // Data will be updated automatically via real-time listener
+        // Add vibration to button clicks
+        document.addEventListener('click', function(e) {
+            if (e.target.matches('.btn, .fab, .action-card, .customer-item')) {
+                vibrate(30);
             }
-        }, 30000);
+        });
+
     </script>
 </body>
-</html>
+</html> "Ahmad",
+                payment: 350000,
+                notes: "AC kamar utama perlu penggantian filter"
+            },
+            {
+                id: 2,
+                name: "Siti Rahma",
+                phone: "08234567890",
+                address: "Jl. Sudirman No. 45, Makassar",
+                acCount: 1,
+                acBrand: "LG",
+                serviceDate: "2024-12-10",
+                technician:
