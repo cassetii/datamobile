@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nala Aircon - Dashboard Mobile</title>
+    
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+    <!-- Firebase -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.5.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.5.0/firebase-firestore-compat.min.js"></script>
+    <!-- AOS Animation -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #FF6B35;
+            --secondary-color: #4A90E2;
+            --success-color: #27AE60;
+            --warning-color: #F39C12;
+            --danger-color: #E74C3C;
+            --purple-color: #9B59B6;
+            --dark-color: #2C3E50;
+            --light-bg: #F8F9FA;
+        }
+
+        body {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .gradient-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #ff8c42 100%);
+            box-shadow: 0 4px 20px rgba(255, 107, 53, 0.3);
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .customer-card {
+            background: white;
+            border-radius: 16px;
+            border: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .customer-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-completed {
+            background: rgba(39, 174, 96, 0.1);
+            color: var(--success-color);
+            border: 1px solid rgba(39, 174, 96, 0.2);
+        }
+
+        .status-progress {
+            background: rgba(243, 156, 18, 0.1);
+            color: var(--warning-color);
+            border: 1px solid rgba(243, 156, 18, 0.2);
+        }
+
+        .status-pending {
+            background: rgba(231, 76, 60, 0.1);
+            color: var(--danger-color);
+            border: 1px solid rgba(231, 76, 60, 0.2);
+        }
+
+        .ac-unit-item {
+            background: rgba(74, 144, 226, 0.05);
+            border-left: 4px solid var(--secondary-color);
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .nav-pills .nav-link {
+            border-radius: 12px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .nav-pills .nav-link.active {
+            background: linear-gradient(135deg, var(--primary-color), #ff8c42);
+            border-color: var(--primary-color);
+            transform: scale(1.05);
+        }
+
+        .search-container {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-control {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(255, 107, 53, 0.25);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), #ff8c42);
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.3);
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .floating-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), #ff8c42);
+            color: white;
+            border: none;
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .floating-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 35px rgba(255, 107, 53, 0.5);
+        }
+
+        .icon-wrapper {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .payment-amount {
+            color: var(--success-color);
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 768px) {
+            .container-fluid {
+                padding: 0.5rem;
+            }
+            
+            .stat-card {
+                padding: 1rem;
+            }
+            
+            .chart-container {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); z-index: 9999;">
+        <div class="text-center">
+            <div class="loading-spinner mx-auto mb-3"></div>
+            <h5 class="text-dark">Loading Dashboard...</h5>
+            <p class="text-muted">Mengambil data dari Firebase...</p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="d-none">
+        <!-- Header -->
+        <header class="gradient-header text-white p-3 shadow-lg">
+            <div class="container-fluid">
+                <div class="row align-items-center mb-3">
+                    <div class="col">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-wrapper bg-white bg-opacity-20 me-3">
+                                <i class="bi bi-activity"></i>
+                            </div>
+                            <div>
+                                <h4 class="mb-1 fw-bold">Nala Aircon</h4>
+                                <small class="opacity-75">Customer & Service Management</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-outline-light btn-sm" onclick="refreshData()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>
+                            <span class="d-none d-sm-inline">Refresh</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Status Indicators -->
+                <div class="d-flex align-items-center gap-3 small">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-success rounded-circle me-2" style="width: 8px; height: 8px;"></div>
+                        <span>Firebase Connected</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="bg-info rounded-circle me-2 pulse-animation" style="width: 8px; height: 8px;"></div>
+                        <span>Real-time Sync</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="container-fluid mt-4">
+            <div class="row g-3" data-aos="fade-up">
+                <div class="col-6">
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <p class="text-muted small mb-1">Total Customer</p>
+                                <h3 class="mb-0 fw-bold" id="totalCustomers">0</h3>
+                            </div>
+                            <div class="icon-wrapper" style="background-color: rgba(74, 144, 226, 0.1); color: var(--secondary-color);">
+                                <i class="bi bi-people"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <p class="text-muted small mb-1">Total AC Unit</p>
+                                <h3 class="mb-0 fw-bold" id="totalACUnits">0</h3>
+                            </div>
+                            <div class="icon-wrapper" style="background-color: rgba(39, 174, 96, 0.1); color: var(--success-color);">
+                                <i class="bi bi-activity"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <p class="text-muted small mb-1">Total Payment</p>
+                                <h4 class="mb-0 fw-bold" id="totalPayments">Rp 0</h4>
+                            </div>
+                            <div class="icon-wrapper" style="background-color: rgba(255, 107, 53, 0.1); color: var(--primary-color);">
+                                <i class="bi bi-credit-card"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="container-fluid mt-4" data-aos="fade-up" data-aos-delay="100">
+            <div class="glass-effect rounded-3 p-2">
+                <ul class="nav nav-pills justify-content-around mb-0" id="mainTabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#dashboard" data-bs-toggle="pill">
+                            <i class="bi bi-speedometer2 me-1"></i>
+                            <small>Dashboard</small>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#charts" data-bs-toggle="pill">
+                            <i class="bi bi-bar-chart me-1"></i>
+                            <small>Analytics</small>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#customers" data-bs-toggle="pill">
+                            <i class="bi bi-people me-1"></i>
+                            <small>Customers</small>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="container-fluid mt-4">
+            <div class="tab-content">
+                <!-- Dashboard Tab -->
+                <div class="tab-pane fade show active" id="dashboard">
+                    <div class="row g-3" data-aos="fade-up" data-aos-delay="200">
+                        <div class="col-6">
+                            <div class="stat-card" style="background: linear-gradient(135deg, var(--secondary-color), #5ba3f5);">
+                                <div class="d-flex justify-content-between align-items-center text-white">
+                                    <div>
+                                        <p class="opacity-75 small mb-1">Services Bulan Ini</p>
+                                        <h3 class="mb-0 fw-bold" id="servicesThisMonth">0</h3>
+                                    </div>
+                                    <i class="bi bi-calendar-check" style="font-size: 2rem; opacity: 0.7;"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-card" style="background: linear-gradient(135deg, var(--success-color), #2ecc71);">
+                                <div class="d-flex justify-content-between align-items-center text-white">
+                                    <div>
+                                        <p class="opacity-75 small mb-1">Avg Payment</p>
+                                        <h5 class="mb-0 fw-bold" id="avgPayment">Rp 0</h5>
+                                    </div>
+                                    <i class="bi bi-cash-coin" style="font-size: 2rem; opacity: 0.7;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mini Chart Preview -->
+                    <div class="chart-container mt-4" data-aos="fade-up" data-aos-delay="300">
+                        <h5 class="fw-bold mb-3">
+                            <i class="bi bi-graph-up me-2 text-primary"></i>
+                            Quick Analytics
+                        </h5>
+                        <canvas id="miniChart" height="150"></canvas>
+                        <div class="text-center mt-3">
+                            <button class="btn btn-outline-primary btn-sm" onclick="showTab('charts')">
+                                Lihat Analytics Lengkap <i class="bi bi-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activities -->
+                    <div class="chart-container" data-aos="fade-up" data-aos-delay="400">
+                        <h5 class="fw-bold mb-3">
+                            <i class="bi bi-clock-history me-2 text-success"></i>
+                            Aktivitas Terbaru
+                        </h5>
+                        <div id="recentActivities">
+                            <!-- Dynamic content will be loaded here -->
+                        </div>
+                        <div class="text-center mt-3">
+                            <button class="btn btn-outline-success btn-sm" onclick="showTab('customers')">
+                                Lihat Semua Customer <i class="bi bi-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Tab -->
+                <div class="tab-pane fade" id="charts">
+                    <!-- AC Brands Pie Chart -->
+                    <div class="chart-container" data-aos="fade-up">
+                        <h5 class="fw-bold mb-3">
+                            <i class="bi bi-pie-chart me-2 text-primary"></i>
+                            Distribusi AC Berdasarkan Merek
+                        </h5>
+                        <canvas id="brandChart"></canvas>
+                        <div id="brandLegend" class="row mt-3 g-2">
+                            <!-- Dynamic legend will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Monthly Revenue Bar Chart -->
+                    <div class="chart-container" data-aos="fade-up" data-aos-delay="100">
+                        <h5 class="fw-bold mb-3">
+                            <i class="bi bi-bar-chart me-2 text-success"></i>
+                            Pendapatan Bulanan
+                        </h5>
+                        <canvas id="revenueChart"></canvas>
+                        <div class="mt-3 p-3 rounded-3" style="background-color: rgba(255, 107, 53, 0.1);">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Total Revenue:</span>
+                                <span class="fw-bold text-primary" id="totalRevenue">Rp 0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customers Tab -->
+                <div class="tab-pane fade" id="customers">
+                    <!-- Search and Filter -->
+                    <div class="search-container mb-4" data-aos="fade-up">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="position-relative">
+                                    <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                                    <input type="text" class="form-control ps-5" id="searchInput" placeholder="Cari customer...">
+                                </div>
+                            </div>
+                            <div class="col-8">
+                                <select class="form-select" id="statusFilter">
+                                    <option value="">Semua Status</option>
+                                    <option value="completed">Selesai</option>
+                                    <option value="in_progress">Sedang Dikerjakan</option>
+                                    <option value="pending">Pending</option>
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-primary w-100" onclick="exportData()">
+                                    <i class="bi bi-download"></i>
+                                    <span class="d-none d-sm-inline ms-1">Export</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer List -->
+                    <div id="customerList">
+                        <!-- Dynamic content will be loaded here -->
+                    </div>
+
+                    <!-- No Results -->
+                    <div id="noResults" class="text-center p-5 d-none">
+                        <i class="bi bi-search text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="text-muted mt-3">Tidak ada customer yang ditemukan</h5>
+                        <p class="text-muted">Coba ubah kata kunci pencarian atau filter</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Add Button -->
+        <button class="floating-btn" onclick="addCustomer()">
+            <i class="bi bi-plus-lg"></i>
+        </button>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBSp7kuXi5hHWcISGQ2nSgL2T3nPMaFrls",
+            authDomain: "dbnala-6fcf1.firebaseapp.com",
+            projectId: "dbnala-6fcf1",
+            storageBucket: "dbnala-6fcf1.firebasestorage.app",
+            messagingSenderId: "1081263780872",
+            appId: "1:1081263780872:web:3df5c78d708e5b1ffb4dbd",
+            measurementId: "G-KLVLB8YQ34"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Global variables
+        let customers = [];
+        let charts = {};
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            AOS.init({
+                duration: 800,
+                once: true
+            });
+            
+            setTimeout(() => {
+                loadData();
+            }, 1500);
+        });
+
+        // Load data from Firestore
+        async function loadData() {
+            try {
+                // Try to load from Firestore first
+                const snapshot = await db.collection('customers').get();
+                
+                if (!snapshot.empty) {
+                    customers = [];
+                    snapshot.forEach(doc => {
+                        customers.push({ id: doc.id, ...doc.data() });
+                    });
+                } else {
+                    // Fallback to mock data if Firestore is empty
+                    customers = getMockData();
+                }
+                
+                updateStats();
+                updateCharts();
+                updateCustomerList();
+                updateRecentActivities();
+                hideLoading();
+                
+            } catch (error) {
+                console.log('Firebase error, using mock data:', error);
+                // Use mock data as fallback
+                customers = getMockData();
+                updateStats();
+                updateCharts();
+                updateCustomerList();
+                updateRecentActivities();
+                hideLoading();
+            }
+        }
+
+        // Mock data for fallback
+        function getMockData() {
+            return [
+                {
+                    id: 1,
+                    name: "Adnan",
+                    address: "patra residence blok f no 26",
+                    phone: "081234567890",
+                    acUnits: [
+                        { brand: "Samsung", model: "Split Wall 1 PK", freon: "R410A", location: "KAMAR Baik" },
+                        { brand: "Samsung", model: "Split Wall 1 PK", freon: "R410A", location: "KAMAR Baik" }
+                    ],
+                    lastService: "04 Juli 2025",
+                    serviceMonth: "Juli",
+                    technician: "AGUS DAN PUTRA",
+                    payment: 160000,
+                    status: "completed"
+                },
+                {
+                    id: 2,
+                    name: "HASNAWATI",
+                    address: "Jln. Terong 63. Sekat Almarkas jl. Mesjid Raya.",
+                    phone: "085242811957",
+                    acUnits: [
+                        { brand: "Daikin", model: "Split Wall 0.5 PK", freon: "R32", location: "Kamar Baik" }
+                    ],
+                    lastService: "04 Juli 2025",
+                    serviceMonth: "Juli",
+                    technician: "AGUS DAN PUTRA",
+                    payment: 80000,
+                    status: "completed"
+                },
+                {
+                    id: 3,
+                    name: "AQSHAL",
+                    address: "perumahan phinisi nusantara blok E6",
+                    phone: "082345606054",
+                    acUnits: [
+                        { brand: "Daikin", model: "Split Wall 0.5 PK", freon: "R22", location: "Kamar Baik" }
+                    ],
+                    lastService: "04 Juli 2025",
+                    serviceMonth: "Juli",
+                    technician: "SATRIA DAN WAHYU",
+                    payment: 150000,
+                    status: "in_progress"
+                },
+                {
+                    id: 4,
+                    name: "BUDI SANTOSO",
+                    address: "Jln. Mawar No. 15",
+                    phone: "081234567890",
+                    acUnits: [
+                        { brand: "LG", model: "Split Wall 1.5 PK", freon: "R32", location: "Ruang Tamu" }
+                    ],
+                    lastService: "15 Juni 2025",
+                    serviceMonth: "Juni",
+                    technician: "AGUS DAN PUTRA",
+                    payment: 200000,
+                    status: "completed"
+                },
+                {
+                    id: 5,
+                    name: "SARI DEWI",
+                    address: "Komplek Graha Indah Blok C12",
+                    phone: "082345678901",
+                    acUnits: [
+                        { brand: "Panasonic", model: "Split Wall 1 PK", freon: "R410A", location: "Kamar Utama" },
+                        { brand: "Samsung", model: "Split Wall 0.5 PK", freon: "R32", location: "Kamar Anak" }
+                    ],
+                    lastService: "20 Mei 2025",
+                    serviceMonth: "Mei",
+                    technician: "SATRIA DAN WAHYU",
+                    payment: 180000,
+                    status: "completed"
+                },
+                {
+                    id: 6,
+                    name: "AHMAD RIZKI",
+                    address: "Perumahan Citra Garden Blok A5",
+                    phone: "083456789012",
+                    acUnits: [
+                        { brand: "Mitsubishi", model: "Split Wall 2 PK", freon: "R410A", location: "Ruang Keluarga" }
+                    ],
+                    lastService: "10 April 2025",
+                    serviceMonth: "April",
+                    technician: "AGUS DAN PUTRA",
+                    payment: 250000,
+                    status: "completed"
+                }
+            ];
+        }
+
+        // Update statistics
+        function updateStats() {
+            const totalCustomers = customers.length;
+            const totalACUnits = customers.reduce((sum, customer) => sum + customer.acUnits.length, 0);
+            const totalPayments = customers.reduce((sum, customer) => sum + customer.payment, 0);
+            const servicesThisMonth = customers.filter(c => c.lastService && c.lastService.includes('Juli 2025')).length;
+            const avgPayment = totalCustomers > 0 ? totalPayments / totalCustomers : 0;
+
+            document.getElementById('totalCustomers').textContent = totalCustomers;
+            document.getElementById('totalACUnits').textContent = totalACUnits;
+            document.getElementById('totalPayments').textContent = formatCurrency(totalPayments);
+            document.getElementById('servicesThisMonth').textContent = servicesThisMonth;
+            document.getElementById('avgPayment').textContent = formatCurrency(avgPayment);
+        }
+
+        // Update charts
+        function updateCharts() {
+            updateBrandChart();
+            updateRevenueChart();
+            updateMiniChart();
+        }
+
+        // Update brand distribution pie chart
+        function updateBrandChart() {
+            const brandCounts = {};
+            customers.forEach(customer => {
+                customer.acUnits.forEach(unit => {
+                    brandCounts[unit.brand] = (brandCounts[unit.brand] || 0) + 1;
+                });
+            });
+
+            const labels = Object.keys(brandCounts);
+            const data = Object.values(brandCounts);
+            const colors = ['#FF6B35', '#4A90E2', '#27AE60', '#F39C12', '#9B59B6', '#E74C3C'];
+
+            if (charts.brandChart) {
+                charts.brandChart.destroy();
+            }
+
+            const ctx = document.getElementById('brandChart').getContext('2d');
+            charts.brandChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 0,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed * 100) / total).toFixed(1);
+                                    return `${context.label}: ${context.parsed} unit (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+
+            // Update legend
+            const legendHTML = labels.map((label, index) => `
+                <div class="col-6 mb-2">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle me-2" style="width: 12px; height: 12px; background-color: ${colors[index]};"></div>
+                        <small class="text-muted">${label}: ${data[index]} unit</small>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('brandLegend').innerHTML = legendHTML;
+        }
+
+        // Update revenue bar chart
+        function updateRevenueChart() {
+            const monthlyRevenue = {};
+            customers.forEach(customer => {
+                const month = customer.serviceMonth || 'Unknown';
+                monthlyRevenue[month] = (monthlyRevenue[month] || 0) + customer.payment;
+            });
+
+            const labels = Object.keys(monthlyRevenue);
+            const data = Object.values(monthlyRevenue);
+            const totalRevenue = data.reduce((a, b) => a + b, 0);
+
+            if (charts.revenueChart) {
+                charts.revenueChart.destroy();
+            }
+
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            charts.revenueChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Revenue',
+                        data: data,
+                        backgroundColor: '#FF6B35',
+                        borderColor: '#FF6B35',
+                        borderWidth: 0,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Revenue: ${formatCurrency(context.parsed.y)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'Rp ' + (value / 1000) + 'k';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
+        }
+
+        // Update mini chart for dashboard
+        function updateMiniChart() {
+            const monthlyRevenue = {};
+            customers.forEach(customer => {
+                const month = customer.serviceMonth || 'Unknown';
+                monthlyRevenue[month] = (monthlyRevenue[month] || 0) + customer.payment;
+            });
+
+            const labels = Object.keys(monthlyRevenue).slice(-3); // Last 3 months
+            const data = labels.map(month => monthlyRevenue[month]);
+
+            if (charts.miniChart) {
+                charts.miniChart.destroy();
+            }
+
+            const ctx = document.getElementById('miniChart').getContext('2d');
+            charts.miniChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: '#FF6B35',
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Revenue: ${formatCurrency(context.parsed.y)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { display: true },
+                        y: { 
+                            display: false,
+                            beginAtZero: true 
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update customer list
+        function updateCustomerList() {
+            const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
+            const statusFilter = document.getElementById('statusFilter')?.value || '';
+
+            const filteredCustomers = customers.filter(customer => {
+                const matchesSearch = customer.name.toLowerCase().includes(searchTerm) ||
+                                    customer.address.toLowerCase().includes(searchTerm) ||
+                                    customer.phone.includes(searchTerm);
+                
+                const matchesFilter = !statusFilter || customer.status === statusFilter;
+                
+                return matchesSearch && matchesFilter;
+            });
+
+            const customerListHTML = filteredCustomers.map(customer => `
+                <div class="customer-card mb-3 fade-in" data-aos="fade-up">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="flex-grow-1">
+                                <h6 class="fw-bold mb-1">${customer.name}</h6>
+                                <div class="d-flex align-items-center text-muted small mb-1">
+                                    <i class="bi bi-geo-alt me-1"></i>
+                                    <span>${customer.address}</span>
+                                </div>
+                                ${customer.phone && customer.phone !== "0" ? `
+                                    <div class="d-flex align-items-center text-muted small">
+                                        <i class="bi bi-telephone me-1"></i>
+                                        <span>${customer.phone}</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <span class="status-badge status-${customer.status}">
+                                ${getStatusText(customer.status)}
+                            </span>
+                        </div>
+
+                        <!-- AC Units -->
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-activity text-primary me-1"></i>
+                                <small class="fw-semibold">${customer.acUnits.length} Unit AC</small>
+                            </div>
+                            ${customer.acUnits.map((unit, index) => `
+                                <div class="ac-unit-item">
+                                    <small class="d-block">
+                                        <strong>AC ${index + 1}:</strong> ${unit.brand} ${unit.model}
+                                        <span class="text-muted"> • Freon: ${unit.freon} • ${unit.location}</span>
+                                    </small>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <!-- Service Info -->
+                        <div class="d-flex justify-content-between align-items-center small mb-2">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-calendar-check text-success me-1"></i>
+                                <span class="text-muted">${customer.lastService}</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-tools text-warning me-1"></i>
+                                <span class="text-muted">${customer.technician}</span>
+                            </div>
+                        </div>
+
+                        <div class="border-top pt-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted small">Payment:</span>
+                                <span class="payment-amount">${formatCurrency(customer.payment)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            if (filteredCustomers.length === 0) {
+                document.getElementById('customerList').innerHTML = '';
+                document.getElementById('noResults').classList.remove('d-none');
+            } else {
+                document.getElementById('customerList').innerHTML = customerListHTML;
+                document.getElementById('noResults').classList.add('d-none');
+            }
+        }
+
+        // Update recent activities
+        function updateRecentActivities() {
+            const recentCustomers = customers.slice(0, 3);
+            const activitiesHTML = recentCustomers.map(customer => `
+                <div class="d-flex align-items-center p-2 mb-2 rounded-3" style="background-color: rgba(74, 144, 226, 0.05);">
+                    <div class="icon-wrapper me-3" style="background-color: rgba(255, 107, 53, 0.1); color: var(--primary-color); width: 40px; height: 40px;">
+                        <i class="bi bi-tools"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-semibold">${customer.name}</h6>
+                        <small class="text-muted">Service • ${customer.lastService}</small>
+                    </div>
+                    <span class="payment-amount small">${formatCurrency(customer.payment)}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('recentActivities').innerHTML = activitiesHTML;
+        }
+
+        // Utility functions
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function getStatusText(status) {
+            switch(status) {
+                case 'completed': return 'Selesai';
+                case 'in_progress': return 'Sedang Dikerjakan';
+                case 'pending': return 'Pending';
+                default: return 'Unknown';
+            }
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingScreen').classList.add('d-none');
+            document.getElementById('app').classList.remove('d-none');
+        }
+
+        function showTab(tabName) {
+            const tabElement = document.querySelector(`[href="#${tabName}"]`);
+            if (tabElement) {
+                const tab = new bootstrap.Tab(tabElement);
+                tab.show();
+            }
+        }
+
+        function refreshData() {
+            document.getElementById('loadingScreen').classList.remove('d-none');
+            document.getElementById('app').classList.add('d-none');
+            
+            setTimeout(() => {
+                loadData();
+            }, 1000);
+        }
+
+        function exportData() {
+            const csvContent = "data:text/csv;charset=utf-8," + 
+                "Name,Address,Phone,AC Units,Last Service,Technician,Payment,Status\n" +
+                customers.map(customer => 
+                    `"${customer.name}","${customer.address}","${customer.phone}",${customer.acUnits.length},"${customer.lastService}","${customer.technician}",${customer.payment},"${customer.status}"`
+                ).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "nala_aircon_customers.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function addCustomer() {
+            alert('Fitur tambah customer akan segera tersedia!');
+        }
+
+        // Search and filter event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('searchInput')?.addEventListener('input', updateCustomerList);
+            document.getElementById('statusFilter')?.addEventListener('change', updateCustomerList);
+        });
+
+        // Real-time Firestore listener
+        function setupRealtimeListener() {
+            db.collection('customers').onSnapshot((snapshot) => {
+                customers = [];
+                snapshot.forEach(doc => {
+                    customers.push({ id: doc.id, ...doc.data() });
+                });
+                
+                updateStats();
+                updateCharts();
+                updateCustomerList();
+                updateRecentActivities();
+            }, (error) => {
+                console.log('Firestore listener error:', error);
+            });
+        }
+
+        // Initialize real-time listener after first load
+        setTimeout(() => {
+            try {
+                setupRealtimeListener();
+            } catch (error) {
+                console.log('Real-time listener setup failed:', error);
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
